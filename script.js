@@ -11,6 +11,7 @@ const templateList = document.getElementById('template-list');
 const startBlankBtn = document.getElementById('start-blank');
 const restSection = document.getElementById('rest-section');
 const workoutSection = document.getElementById('workout-section');
+const homeBtn = document.getElementById('home-button');
 const addExerciseSection = document.getElementById('add-exercise-section');
 const historySection = document.getElementById('history-section');
 
@@ -42,6 +43,14 @@ function loadTemplates() {
 
 function saveTemplates(tmpl) {
   localStorage.setItem('workoutTemplates', JSON.stringify(tmpl));
+}
+
+function loadExerciseHistory() {
+  return JSON.parse(localStorage.getItem('exerciseHistory') || '{}');
+}
+
+function saveExerciseHistory(hist) {
+  localStorage.setItem('exerciseHistory', JSON.stringify(hist));
 }
 
 function renderTemplateList() {
@@ -76,12 +85,8 @@ function startRestTimer() {
 }
 
 function getLastExerciseSets(name) {
-  const history = loadHistory().slice().reverse();
-  for (const w of history) {
-    const ex = w.exercises.find(e => e.name === name);
-    if (ex) return ex.sets;
-  }
-  return null;
+  const hist = loadExerciseHistory();
+  return hist[name] || null;
 }
 
 function renderWorkout() {
@@ -109,13 +114,20 @@ function renderWorkout() {
     div.appendChild(header);
 
     const ul = document.createElement('ul');
+    const lastSets = getLastExerciseSets(ex.name);
     ex.sets.forEach((set, j) => {
       const li = document.createElement('li');
       li.className = 'set-item';
       li.dataset.index = j;
+      let history = '';
+      if (lastSets && lastSets[j]) {
+        const ls = lastSets[j];
+        history = `<span class="history">${ls.weight || 0}kg x ${ls.reps || 0}</span>`;
+      }
       li.innerHTML =
         `<input type="number" class="weight" placeholder="kg" value="${set.weight || ''}">` +
         `<input type="number" class="reps" placeholder="reps" value="${set.reps || ''}">` +
+        history +
         `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>`;
       ul.appendChild(li);
     });
@@ -231,6 +243,11 @@ saveWorkoutBtn.addEventListener('click', () => {
   const history = loadHistory();
   history.push({ date: new Date().toLocaleString(), exercises: workout.exercises });
   saveHistory(history);
+  const exHist = loadExerciseHistory();
+  workout.exercises.forEach(ex => {
+    exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
+  });
+  saveExerciseHistory(exHist);
   saveWorkout();
   renderHistory();
 });
@@ -259,6 +276,12 @@ startBlankBtn.addEventListener('click', () => {
   renderHistory();
 });
 
+homeBtn.addEventListener('click', () => {
+  showWorkoutUI(false);
+  startSection.classList.remove('hidden');
+  clearInterval(restTimer);
+});
+
 templateList.addEventListener('click', e => {
   if (e.target.tagName === 'BUTTON') {
     const idx = parseInt(e.target.dataset.index, 10);
@@ -266,6 +289,7 @@ templateList.addEventListener('click', e => {
     const tmpl = templates[idx];
     if (tmpl) {
       workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises }));
+      workout.exercises.forEach(ex => ex.sets.forEach(s => { s.done = false; }));
       saveWorkout();
       startSection.classList.add('hidden');
       showWorkoutUI(true);
