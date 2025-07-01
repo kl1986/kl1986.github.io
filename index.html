@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Workout Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <h1>Workout Tracker</h1>
+
+  <section id="rest-section">
+    <label>Rest seconds: <input type="number" id="rest-input" value="60"></label>
+    <span id="timer-display">60</span>
+  </section>
+
+  <section id="workout-section">
+    <h2>Exercises</h2>
+    <div id="exercise-list"></div>
+    <button id="save-workout">Save Workout</button>
+  </section>
+
+  <section id="add-exercise-section">
+    <form id="add-exercise-form">
+      <input type="text" id="exercise-name" placeholder="New exercise" required>
+      <button type="submit">Add Exercise</button>
+    </form>
+  </section>
+
+  <section id="history-section">
+    <h2>History</h2>
+    <div id="history-list"></div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>

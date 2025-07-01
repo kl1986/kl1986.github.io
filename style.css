@@ -1,0 +1,68 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background-color: #f4f4f4;
+}
+
+h1 {
+    text-align: center;
+}
+
+form input {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+}
+
+#timer-display {
+    font-size: 2rem;
+    margin-left: 1rem;
+}
+
+.exercise {
+    background: #fff;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.exercise-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.exercise-header h3 {
+    flex: 1;
+    margin: 0;
+}
+
+.set-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.set-item input[type="number"] {
+    width: 4rem;
+    margin-right: 0.25rem;
+}
+
+.history-entry {
+    background: #fff;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
