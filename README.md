@@ -4,6 +4,7 @@ This offline-capable web application helps you build and repeat workouts directl
 
 - Add any number of exercises
 - For each exercise manage multiple sets with weight and reps
+- When adding a new set it inherits the previous set's weight and reps
 - Reorder exercises and edit set details as you train
 - Tick off sets to automatically start a rest countdown
 - Save the workout and view previous sessions in the history list

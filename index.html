@@ -10,25 +10,32 @@
 <body>
   <h1>Workout Tracker</h1>
 
-  <section id="rest-section">
+  <section id="start-section">
+    <h2>Select Workout</h2>
+    <button id="start-blank">Start Blank Workout</button>
+    <div id="template-list"></div>
+  </section>
+
+  <section id="rest-section" class="hidden">
     <label>Rest seconds: <input type="number" id="rest-input" value="60"></label>
     <span id="timer-display">60</span>
   </section>
 
-  <section id="workout-section">
+  <section id="workout-section" class="hidden">
     <h2>Exercises</h2>
     <div id="exercise-list"></div>
     <button id="save-workout">Save Workout</button>
+    <button id="save-template">Save as Template</button>
   </section>
 
-  <section id="add-exercise-section">
+  <section id="add-exercise-section" class="hidden">
     <form id="add-exercise-form">
       <input type="text" id="exercise-name" placeholder="New exercise" required>
       <button type="submit">Add Exercise</button>
     </form>
   </section>
 
-  <section id="history-section">
+  <section id="history-section" class="hidden">
     <h2>History</h2>
     <div id="history-list"></div>
   </section>

@@ -2,9 +2,17 @@ const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
 const saveWorkoutBtn = document.getElementById('save-workout');
+const saveTemplateBtn = document.getElementById('save-template');
 const historyList = document.getElementById('history-list');
 const restInput = document.getElementById('rest-input');
 const timerDisplay = document.getElementById('timer-display');
+const startSection = document.getElementById('start-section');
+const templateList = document.getElementById('template-list');
+const startBlankBtn = document.getElementById('start-blank');
+const restSection = document.getElementById('rest-section');
+const workoutSection = document.getElementById('workout-section');
+const addExerciseSection = document.getElementById('add-exercise-section');
+const historySection = document.getElementById('history-section');
 
 let restTimer = null;
 let workout = { exercises: [] };
@@ -26,6 +34,32 @@ function loadHistory() {
 
 function saveHistory(hist) {
   localStorage.setItem('workoutHistory', JSON.stringify(hist));
+}
+
+function loadTemplates() {
+  return JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+}
+
+function saveTemplates(tmpl) {
+  localStorage.setItem('workoutTemplates', JSON.stringify(tmpl));
+}
+
+function renderTemplateList() {
+  const templates = loadTemplates();
+  templateList.innerHTML = '';
+  templates.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = t.name;
+    btn.dataset.index = i;
+    templateList.appendChild(btn);
+  });
+}
+
+function showWorkoutUI(show) {
+  [restSection, workoutSection, addExerciseSection, historySection].forEach(sec => {
+    if (show) sec.classList.remove('hidden');
+    else sec.classList.add('hidden');
+  });
 }
 
 function startRestTimer() {
@@ -138,7 +172,11 @@ exerciseList.addEventListener('click', e => {
   if (!exEl) return;
   const exIndex = parseInt(exEl.dataset.index, 10);
   if (e.target.classList.contains('add-set')) {
-    workout.exercises[exIndex].sets.push({ weight: '', reps: '', done: false });
+    const sets = workout.exercises[exIndex].sets;
+    const last = sets[sets.length - 1];
+    const weight = last && last.weight !== '' ? last.weight : '';
+    const reps = last && last.reps !== '' ? last.reps : '';
+    sets.push({ weight, reps, done: false });
     saveWorkout();
     renderWorkout();
   } else if (e.target.classList.contains('up') && exIndex > 0) {
@@ -197,8 +235,51 @@ saveWorkoutBtn.addEventListener('click', () => {
   renderHistory();
 });
 
+saveTemplateBtn.addEventListener('click', () => {
+  const name = prompt('Template name:');
+  if (!name) return;
+  const templates = loadTemplates();
+  const existing = templates.find(t => t.name === name);
+  if (existing) {
+    if (!confirm('Overwrite existing template?')) return;
+    existing.exercises = JSON.parse(JSON.stringify(workout.exercises));
+  } else {
+    templates.push({ name, exercises: JSON.parse(JSON.stringify(workout.exercises)) });
+  }
+  saveTemplates(templates);
+  renderTemplateList();
+});
+
+startBlankBtn.addEventListener('click', () => {
+  workout = { exercises: [] };
+  saveWorkout();
+  startSection.classList.add('hidden');
+  showWorkoutUI(true);
+  renderWorkout();
+  renderHistory();
+});
+
+templateList.addEventListener('click', e => {
+  if (e.target.tagName === 'BUTTON') {
+    const idx = parseInt(e.target.dataset.index, 10);
+    const templates = loadTemplates();
+    const tmpl = templates[idx];
+    if (tmpl) {
+      workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises }));
+      saveWorkout();
+      startSection.classList.add('hidden');
+      showWorkoutUI(true);
+      renderWorkout();
+      renderHistory();
+    }
+  }
+});
+
 function init() {
   loadWorkout();
+  renderTemplateList();
+  showWorkoutUI(false);
+  startSection.classList.remove('hidden');
   renderWorkout();
   renderHistory();
   if ('serviceWorker' in navigator) {
