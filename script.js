@@ -30,6 +30,7 @@ const endWorkoutBtn = document.getElementById('end-workout');
 const workoutTimeDisplay = document.getElementById('workout-time');
 const appVersionFooter = document.getElementById('app-version');
 const workoutCommentEl = document.getElementById('workout-comment');
+const templateIndicator = document.getElementById('template-indicator');
 
 let restTimer = null;
 let workout = { exercises: [], comment: '' };
@@ -38,6 +39,17 @@ let workoutStart = null;
 let pausedTime = 0;
 let pauseStart = null;
 let currentTemplate = null;
+
+function renderCurrentTemplate() {
+  if (!templateIndicator) return;
+  if (currentTemplate) {
+    templateIndicator.textContent = `Template: ${currentTemplate}`;
+    templateIndicator.classList.remove('hidden');
+  } else {
+    templateIndicator.textContent = '';
+    templateIndicator.classList.add('hidden');
+  }
+}
 
 function renderWorkoutComment() {
   if (!workoutCommentEl) return;
@@ -382,6 +394,7 @@ async function finishWorkout() {
     }
   }
   currentTemplate = null;
+  renderCurrentTemplate();
 }
 
 function getLastExerciseSets(name) {
@@ -658,6 +671,7 @@ saveTemplateBtn.addEventListener('click', async () => {
 startBlankBtn.addEventListener('click', async () => {
   workout = { exercises: [], comment: '' };
   currentTemplate = null;
+  renderCurrentTemplate();
   saveWorkout();
   startSection.classList.add('hidden');
   showWorkoutUI(true);
@@ -672,6 +686,7 @@ homeBtn.addEventListener('click', () => {
   clearInterval(restTimer);
   endWorkoutTimer();
   currentTemplate = null;
+  renderCurrentTemplate();
 });
 
 exportBtn.addEventListener('click', exportAllData);
@@ -731,6 +746,7 @@ templateList.addEventListener('click', async e => {
       workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises, comment: tmpl.comment || '' }));
       workout.exercises.forEach(ex => ex.sets.forEach(s => { s.done = false; }));
       currentTemplate = tmpl.name;
+      renderCurrentTemplate();
       saveWorkout();
       startSection.classList.add('hidden');
       showWorkoutUI(true);
@@ -747,6 +763,7 @@ function init() {
   renderHistory();
   renderWorkout();
   renderTemplateList();
+  renderCurrentTemplate();
   if (workout.exercises && workout.exercises.length > 0) {
     startSection.classList.add('hidden');
     showWorkoutUI(true);
