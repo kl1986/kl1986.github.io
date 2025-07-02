@@ -15,6 +15,14 @@
     <button id="save-template" title="Save Template">⭐</button>
   </div>
 
+  <section id="workout-timer-section" class="hidden">
+    <button id="start-workout">Start Workout</button>
+    <button id="pause-workout" class="hidden">Pause</button>
+    <button id="resume-workout" class="hidden">Resume</button>
+    <button id="end-workout" class="hidden">End Workout</button>
+    <span id="workout-time">00:00:00</span>
+  </section>
+
   <section id="start-section">
     <h2>Select Workout</h2>
     <button id="start-blank">Start Blank Workout</button>
@@ -23,6 +31,7 @@
       <button id="export-data">Export Data</button>
       <button id="import-data-button">Import Data</button>
       <input type="file" id="import-data" accept="application/json" class="hidden">
+      <button id="show-instructions">File Format</button>
     </div>
   </section>
 
@@ -49,6 +58,20 @@
     <div id="history-list"></div>
   </section>
 
+  <section id="instructions-section" class="hidden">
+    <h2>Import/Export File Format</h2>
+    <p>The exported file is JSON structured as:</p>
+    <pre>{
+  "currentWorkout": { ... },
+  "workoutHistory": [ ... ],
+  "workoutTemplates": [ ... ],
+  "exerciseHistory": { ... }
+}</pre>
+    <p>Create a file with the same structure to import your data.</p>
+    <button id="instructions-back">Back</button>
+  </section>
+
   <script src="script.js"></script>
+  <footer id="app-version"></footer>
 </body>
 </html>

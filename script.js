@@ -1,3 +1,4 @@
+const APP_VERSION = '1';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -19,9 +20,23 @@ const topButtons = document.getElementById('top-buttons');
 const exportBtn = document.getElementById('export-data');
 const importInput = document.getElementById('import-data');
 const importBtn = document.getElementById('import-data-button');
+const instructionsBtn = document.getElementById('show-instructions');
+const instructionsSection = document.getElementById('instructions-section');
+const instructionsBack = document.getElementById('instructions-back');
+const workoutTimerSection = document.getElementById('workout-timer-section');
+const startWorkoutBtn = document.getElementById('start-workout');
+const pauseWorkoutBtn = document.getElementById('pause-workout');
+const resumeWorkoutBtn = document.getElementById('resume-workout');
+const endWorkoutBtn = document.getElementById('end-workout');
+const workoutTimeDisplay = document.getElementById('workout-time');
+const appVersionFooter = document.getElementById('app-version');
 
 let restTimer = null;
 let workout = { exercises: [] };
+let workoutTimer = null;
+let workoutStart = null;
+let pausedTime = 0;
+let pauseStart = null;
 
 function loadWorkout() {
   const data = localStorage.getItem('currentWorkout');
@@ -71,7 +86,6 @@ function exportAllData() {
   a.download = 'workout-data.json';
   a.click();
   URL.revokeObjectURL(url);
-  location.href = 'mailto:?subject=Workout%20Data&body=' + encodeURIComponent(JSON.stringify(data));
 }
 
 function importDataFromFile(file) {
@@ -122,7 +136,14 @@ function updateExerciseHistoryFromWorkouts(workouts) {
 
 function formatDate(str) {
   const d = new Date(str);
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const day = d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const hour = d.getHours();
+  let period = 'evening';
+  if (hour >= 5 && hour < 12) period = 'morning';
+  else if (hour >= 12 && hour < 14) period = 'lunchtime';
+  else if (hour >= 14 && hour < 18) period = 'afternoon';
+  return `${day} ${time} (${period})`;
 }
 
 async function renderTemplateList() {
@@ -156,7 +177,7 @@ function renderExerciseOptions() {
 }
 
 function showWorkoutUI(show) {
-  [restSection, workoutSection, addExerciseSection, historySection, topButtons].forEach(sec => {
+  [restSection, workoutSection, addExerciseSection, historySection, topButtons, workoutTimerSection].forEach(sec => {
     if (show) sec.classList.remove('hidden');
     else sec.classList.add('hidden');
   });
@@ -229,6 +250,66 @@ function sendRestNotification() {
       }
     });
   }
+}
+
+function formatTime(ms) {
+  const total = Math.floor(ms / 1000);
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function startWorkoutTimer() {
+  workoutStart = Date.now();
+  pausedTime = 0;
+  pauseStart = null;
+  workoutTimeDisplay.textContent = '00:00:00';
+  workoutTimerSection.classList.remove('hidden');
+  startWorkoutBtn.classList.add('hidden');
+  pauseWorkoutBtn.classList.remove('hidden');
+  endWorkoutBtn.classList.remove('hidden');
+  workoutTimer = setInterval(() => {
+    const now = Date.now();
+    const elapsed = now - workoutStart - pausedTime;
+    workoutTimeDisplay.textContent = formatTime(elapsed);
+  }, 1000);
+}
+
+function pauseWorkoutTimer() {
+  if (workoutTimer) {
+    clearInterval(workoutTimer);
+    workoutTimer = null;
+    pauseStart = Date.now();
+    pauseWorkoutBtn.classList.add('hidden');
+    resumeWorkoutBtn.classList.remove('hidden');
+  }
+}
+
+function resumeWorkoutTimer() {
+  if (pauseStart) {
+    pausedTime += Date.now() - pauseStart;
+    pauseStart = null;
+    resumeWorkoutBtn.classList.add('hidden');
+    pauseWorkoutBtn.classList.remove('hidden');
+    workoutTimer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - workoutStart - pausedTime;
+      workoutTimeDisplay.textContent = formatTime(elapsed);
+    }, 1000);
+  }
+}
+
+function endWorkoutTimer() {
+  if (workoutTimer) {
+    clearInterval(workoutTimer);
+    workoutTimer = null;
+  }
+  workoutTimerSection.classList.add('hidden');
+  startWorkoutBtn.classList.remove('hidden');
+  pauseWorkoutBtn.classList.add('hidden');
+  resumeWorkoutBtn.classList.add('hidden');
+  endWorkoutBtn.classList.add('hidden');
 }
 
 function getLastExerciseSets(name) {
@@ -323,7 +404,7 @@ async function renderHistory() {
     const ul = document.createElement('ul');
     w.exercises.forEach(ex => {
       const li = document.createElement('li');
-      li.textContent = `${ex.name}: ` + ex.sets.map(s => `${s.weight || 0}kg x ${s.reps}`).join(', ');
+      li.textContent = `${ex.name}: ` + ex.sets.map(s => `${s.weight || 0}kg x ${s.reps}${s.done ? '✓' : '✗'}`).join(', ');
       ul.appendChild(li);
     });
     div.appendChild(ul);
@@ -471,6 +552,7 @@ startBlankBtn.addEventListener('click', async () => {
   saveWorkout();
   startSection.classList.add('hidden');
   showWorkoutUI(true);
+  endWorkoutTimer();
   renderWorkout();
   await renderHistory();
 });
@@ -479,11 +561,24 @@ homeBtn.addEventListener('click', () => {
   showWorkoutUI(false);
   startSection.classList.remove('hidden');
   clearInterval(restTimer);
+  endWorkoutTimer();
 });
 
 exportBtn.addEventListener('click', exportAllData);
 importBtn.addEventListener('click', () => importInput.click());
 importInput.addEventListener('change', e => importDataFromFile(e.target.files[0]));
+instructionsBtn.addEventListener('click', () => {
+  startSection.classList.add('hidden');
+  instructionsSection.classList.remove('hidden');
+});
+instructionsBack.addEventListener('click', () => {
+  instructionsSection.classList.add('hidden');
+  startSection.classList.remove('hidden');
+});
+startWorkoutBtn.addEventListener('click', startWorkoutTimer);
+pauseWorkoutBtn.addEventListener('click', pauseWorkoutTimer);
+resumeWorkoutBtn.addEventListener('click', resumeWorkoutTimer);
+endWorkoutBtn.addEventListener('click', endWorkoutTimer);
 
 templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
@@ -502,6 +597,7 @@ templateList.addEventListener('click', async e => {
       saveWorkout();
       startSection.classList.add('hidden');
       showWorkoutUI(true);
+      endWorkoutTimer();
       renderWorkout();
       await renderHistory();
     }
@@ -549,6 +645,7 @@ function init() {
   renderHistory();
   renderWorkout();
   renderTemplateList();
+  if (appVersionFooter) appVersionFooter.textContent = 'Version ' + APP_VERSION;
 }
 
 document.addEventListener('DOMContentLoaded', init);
