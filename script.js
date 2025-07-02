@@ -16,16 +16,12 @@ const homeBtn = document.getElementById('home-button');
 const addExerciseSection = document.getElementById('add-exercise-section');
 const historySection = document.getElementById('history-section');
 const topButtons = document.getElementById('top-buttons');
-const loginForm = document.getElementById('login-form');
-const loginUsername = document.getElementById('login-username');
-const loginPassword = document.getElementById('login-password');
-const registerButton = document.getElementById('register-button');
-const authSection = document.getElementById('auth-section');
-const logoutButton = document.getElementById('logout-button');
+const exportBtn = document.getElementById('export-data');
+const importInput = document.getElementById('import-data');
+const importBtn = document.getElementById('import-data-button');
 
 let restTimer = null;
 let workout = { exercises: [] };
-let currentUser = null;
 
 function loadWorkout() {
   const data = localStorage.getItem('currentWorkout');
@@ -38,59 +34,72 @@ function saveWorkout() {
   localStorage.setItem('currentWorkout', JSON.stringify(workout));
 }
 
-async function loadHistory() {
-  if (!currentUser) return [];
-  const resp = await fetch('/api/workouts');
-  const data = await resp.json();
-  localStorage.setItem('workoutHistory', JSON.stringify(data));
+function loadHistory() {
+  const data = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
   updateExerciseHistoryFromWorkouts(data);
   return data;
 }
 
-async function saveHistoryEntry(exercises) {
-  if (!currentUser) return;
-  const resp = await fetch('/api/workouts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ exercises })
-  });
-  const w = await resp.json();
+function saveHistoryEntry(exercises) {
   const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  const w = { id: Date.now(), date: new Date().toISOString(), exercises };
   history.push(w);
   localStorage.setItem('workoutHistory', JSON.stringify(history));
   updateExerciseHistoryFromWorkouts(history);
   return w;
 }
 
-async function loadTemplates() {
-  let templates = JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
-  if (currentUser) {
-    try {
-      const resp = await fetch('/api/templates');
-      if (resp.ok) {
-        templates = await resp.json();
-        localStorage.setItem('workoutTemplates', JSON.stringify(templates));
-      }
-    } catch (e) {
-      console.error('Failed to load templates', e);
-    }
-  }
-  return templates;
+function loadTemplates() {
+  return JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
 }
 
-async function saveTemplates(tmpl) {
+function saveTemplates(tmpl) {
   localStorage.setItem('workoutTemplates', JSON.stringify(tmpl));
-  if (currentUser) {
+}
+
+function exportAllData() {
+  const data = {
+    currentWorkout: workout,
+    workoutHistory: JSON.parse(localStorage.getItem('workoutHistory') || '[]'),
+    workoutTemplates: JSON.parse(localStorage.getItem('workoutTemplates') || '[]'),
+    exerciseHistory: loadExerciseHistory()
+  };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'workout-data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  location.href = 'mailto:?subject=Workout%20Data&body=' + encodeURIComponent(JSON.stringify(data));
+}
+
+function importDataFromFile(file) {
+  if (!file) return;
+  file.text().then(str => {
     try {
-      await fetch('/api/templates', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tmpl)
-      });
+      const data = JSON.parse(str);
+      if (data.currentWorkout) {
+        workout = data.currentWorkout;
+        saveWorkout();
+      }
+      if (data.workoutHistory) {
+        localStorage.setItem('workoutHistory', JSON.stringify(data.workoutHistory));
+      }
+      if (data.workoutTemplates) {
+        localStorage.setItem('workoutTemplates', JSON.stringify(data.workoutTemplates));
+      }
+      if (data.exerciseHistory) {
+        saveExerciseHistory(data.exerciseHistory);
+      }
+      renderExerciseOptions();
+      renderTemplateList();
+      renderHistory();
+      renderWorkout();
     } catch (e) {
-      console.error('Failed to save templates', e);
+      alert('Failed to import data');
     }
-  }
+  });
 }
 
 function loadExerciseHistory() {
@@ -136,14 +145,8 @@ async function renderTemplateList() {
   });
 }
 
-async function renderExerciseOptions() {
-  let list = [];
-  if (currentUser) {
-    const resp = await fetch('/api/exercises');
-    list = await resp.json();
-  } else {
-    list = Object.keys(loadExerciseHistory());
-  }
+function renderExerciseOptions() {
+  const list = Object.keys(loadExerciseHistory());
   exerciseOptions.innerHTML = '';
   list.forEach(name => {
     const opt = document.createElement('option');
@@ -328,17 +331,10 @@ async function renderHistory() {
   });
 }
 
-addExerciseForm.addEventListener('submit', async e => {
+addExerciseForm.addEventListener('submit', e => {
   e.preventDefault();
   const name = exerciseNameInput.value.trim();
   if (!name) return;
-  if (currentUser) {
-    await fetch('/api/exercises', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-  }
   const lastSets = getLastExerciseSets(name);
   const sets = lastSets
     ? lastSets.map(() => ({ weight: '', reps: '', done: false }))
@@ -485,14 +481,9 @@ homeBtn.addEventListener('click', () => {
   clearInterval(restTimer);
 });
 
-logoutButton.addEventListener('click', async () => {
-  await fetch('/api/logout', { method: 'POST' });
-  currentUser = null;
-  showWorkoutUI(false);
-  startSection.classList.add('hidden');
-  authSection.classList.remove('hidden');
-  logoutButton.classList.add('hidden');
-});
+exportBtn.addEventListener('click', exportAllData);
+importBtn.addEventListener('click', () => importInput.click());
+importInput.addEventListener('change', e => importDataFromFile(e.target.files[0]));
 
 templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
@@ -517,74 +508,20 @@ templateList.addEventListener('click', async e => {
   }
 });
 
-loginForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const username = loginUsername.value.trim();
-  const password = loginPassword.value.trim();
-  const resp = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  if (resp.ok) {
-    currentUser = await resp.json();
-    authSection.classList.add('hidden');
-    startSection.classList.remove('hidden');
-    logoutButton.classList.remove('hidden');
-    await renderExerciseOptions();
-    await renderHistory();
-    renderWorkout();
-    await renderTemplateList();
-  } else {
-    alert('Login failed');
-  }
-});
-
-registerButton.addEventListener('click', async () => {
-  const username = loginUsername.value.trim();
-  const password = loginPassword.value.trim();
-  const resp = await fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  if (resp.ok) {
-    currentUser = await resp.json();
-    authSection.classList.add('hidden');
-    startSection.classList.remove('hidden');
-    logoutButton.classList.remove('hidden');
-    await renderExerciseOptions();
-    await renderHistory();
-    renderWorkout();
-    await renderTemplateList();
-  } else {
-    alert('Register failed');
-  }
-});
-
 function init() {
   showWorkoutUI(false);
-  authSection.classList.remove('hidden');
+  startSection.classList.remove('hidden');
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
   }
   if ('Notification' in window) {
     Notification.requestPermission();
   }
-  fetch('/api/user')
-    .then(r => r.ok ? r.json() : null)
-    .then(async user => {
-      if (user) {
-        currentUser = user;
-        authSection.classList.add('hidden');
-        startSection.classList.remove('hidden');
-        logoutButton.classList.remove('hidden');
-        await renderExerciseOptions();
-        await renderHistory();
-        renderWorkout();
-        await renderTemplateList();
-      }
-    });
+  loadWorkout();
+  renderExerciseOptions();
+  renderHistory();
+  renderWorkout();
+  renderTemplateList();
 }
 
 document.addEventListener('DOMContentLoaded', init);

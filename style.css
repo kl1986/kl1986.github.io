@@ -89,9 +89,6 @@ ul {
     display: none;
 }
 
-#auth-section {
-    margin-bottom: 1rem;
-}
 
 .rest-progress {
     width: 100%;
@@ -126,6 +123,10 @@ ul {
     font-size: 0.9rem;
 }
 
-#logout-button {
+#data-buttons {
     margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
 }
+
