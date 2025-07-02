@@ -61,12 +61,35 @@ async function saveHistoryEntry(exercises) {
   return w;
 }
 
-function loadTemplates() {
-  return JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+async function loadTemplates() {
+  let templates = JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+  if (currentUser) {
+    try {
+      const resp = await fetch('/api/templates');
+      if (resp.ok) {
+        templates = await resp.json();
+        localStorage.setItem('workoutTemplates', JSON.stringify(templates));
+      }
+    } catch (e) {
+      console.error('Failed to load templates', e);
+    }
+  }
+  return templates;
 }
 
-function saveTemplates(tmpl) {
+async function saveTemplates(tmpl) {
   localStorage.setItem('workoutTemplates', JSON.stringify(tmpl));
+  if (currentUser) {
+    try {
+      await fetch('/api/templates', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tmpl)
+      });
+    } catch (e) {
+      console.error('Failed to save templates', e);
+    }
+  }
 }
 
 function loadExerciseHistory() {
@@ -87,8 +110,8 @@ function updateExerciseHistoryFromWorkouts(workouts) {
   saveExerciseHistory(hist);
 }
 
-function renderTemplateList() {
-  const templates = loadTemplates();
+async function renderTemplateList() {
+  const templates = await loadTemplates();
   templateList.innerHTML = '';
   templates.forEach((t, i) => {
     const wrapper = document.createElement('div');
@@ -358,10 +381,10 @@ saveWorkoutBtn.addEventListener('click', async () => {
   await renderHistory();
 });
 
-saveTemplateBtn.addEventListener('click', () => {
+saveTemplateBtn.addEventListener('click', async () => {
   const name = prompt('Template name:');
   if (!name) return;
-  const templates = loadTemplates();
+  const templates = await loadTemplates();
   const existing = templates.find(t => t.name === name);
   if (existing) {
     if (!confirm('Overwrite existing template?')) return;
@@ -369,8 +392,8 @@ saveTemplateBtn.addEventListener('click', () => {
   } else {
     templates.push({ name, exercises: JSON.parse(JSON.stringify(workout.exercises)) });
   }
-  saveTemplates(templates);
-  renderTemplateList();
+  await saveTemplates(templates);
+  await renderTemplateList();
 });
 
 startBlankBtn.addEventListener('click', async () => {
@@ -391,13 +414,13 @@ homeBtn.addEventListener('click', () => {
 templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
     const idx = parseInt(e.target.dataset.index, 10);
-    const templates = loadTemplates();
+    const templates = await loadTemplates();
     templates.splice(idx, 1);
-    saveTemplates(templates);
-    renderTemplateList();
+    await saveTemplates(templates);
+    await renderTemplateList();
   } else if (e.target.classList.contains('tmpl-start')) {
     const idx = parseInt(e.target.dataset.index, 10);
-    const templates = loadTemplates();
+    const templates = await loadTemplates();
     const tmpl = templates[idx];
     if (tmpl) {
       workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises }));
@@ -427,7 +450,7 @@ loginForm.addEventListener('submit', async e => {
     await renderExerciseOptions();
     await renderHistory();
     renderWorkout();
-    renderTemplateList();
+    await renderTemplateList();
   } else {
     alert('Login failed');
   }
@@ -448,7 +471,7 @@ registerButton.addEventListener('click', async () => {
     await renderExerciseOptions();
     await renderHistory();
     renderWorkout();
-    renderTemplateList();
+    await renderTemplateList();
   } else {
     alert('Register failed');
   }
@@ -470,7 +493,7 @@ function init() {
         await renderExerciseOptions();
         await renderHistory();
         renderWorkout();
-        renderTemplateList();
+        await renderTemplateList();
       }
     });
 }

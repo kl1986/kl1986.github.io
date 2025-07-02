@@ -10,7 +10,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const db = new Low(new JSONFile('db.json'), { users: [], exercises: [], workouts: [] });
+const db = new Low(new JSONFile('db.json'), {
+  users: [],
+  exercises: [],
+  workouts: [],
+  templates: []
+});
 await db.read();
 
 app.use(express.json());
@@ -77,6 +82,22 @@ app.post('/api/workouts', requireLogin, async (req, res) => {
   db.data.workouts.push(workout);
   await db.write();
   res.json(workout);
+});
+
+app.get('/api/templates', requireLogin, (req, res) => {
+  const entry = db.data.templates.find(t => t.userId === req.session.userId);
+  res.json(entry ? entry.templates : []);
+});
+
+app.put('/api/templates', requireLogin, async (req, res) => {
+  let entry = db.data.templates.find(t => t.userId === req.session.userId);
+  if (entry) {
+    entry.templates = req.body || [];
+  } else {
+    db.data.templates.push({ userId: req.session.userId, templates: req.body || [] });
+  }
+  await db.write();
+  res.json({ ok: true });
 });
 
 app.use(express.static(__dirname));

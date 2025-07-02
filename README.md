@@ -11,13 +11,13 @@ This offline-capable web application helps you build and repeat workouts directl
 - Save the workout and view previous sessions in the history list
 - Select exercises you've done before when adding a new one, with the same number of sets as last time
 
-The project now includes a small Node.js server that stores user accounts, the global exercise list and workout history. Run it with:
+The project now includes a small Node.js server that stores user accounts, the global exercise list, workout history and saved templates. Run it with:
 
 ```bash
 npm install
 npm start
 ```
 
-Open `http://localhost:3000` in your browser. Register or log in to have your workouts synced to the server. When adding a new exercise it is saved to the shared database, but the sets, reps and weights remain unique to your account.
+Open `http://localhost:3000` in your browser. Register or log in to have your workouts and templates synced to the server. When adding a new exercise it is saved to the shared database, but the sets, reps and weights remain unique to your account.
 
 The app still works offline thanks to local storage and a service worker.
