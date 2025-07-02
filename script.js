@@ -1,9 +1,8 @@
-const APP_VERSION = '1';
+const APP_VERSION = '1.1';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
 const exerciseOptions = document.getElementById('exercise-options');
-const saveWorkoutBtn = document.getElementById('save-workout');
 const saveTemplateBtn = document.getElementById('save-template');
 const historyList = document.getElementById('history-list');
 const restInput = document.getElementById('rest-input');
@@ -31,7 +30,6 @@ const endWorkoutBtn = document.getElementById('end-workout');
 const workoutTimeDisplay = document.getElementById('workout-time');
 const appVersionFooter = document.getElementById('app-version');
 const workoutCommentEl = document.getElementById('workout-comment');
-const workoutCommentBtn = document.getElementById('toggle-workout-comment');
 
 let restTimer = null;
 let workout = { exercises: [], comment: '' };
@@ -42,16 +40,8 @@ let pauseStart = null;
 let currentTemplate = null;
 
 function renderWorkoutComment() {
-  if (!workoutCommentEl || !workoutCommentBtn) return;
-  if (workout.comment) {
-    workoutCommentEl.value = workout.comment;
-    workoutCommentEl.classList.remove('hidden');
-    workoutCommentBtn.classList.add('hidden');
-  } else {
-    workoutCommentEl.value = '';
-    workoutCommentEl.classList.add('hidden');
-    workoutCommentBtn.classList.remove('hidden');
-  }
+  if (!workoutCommentEl) return;
+  workoutCommentEl.value = workout.comment || '';
 }
 
 function loadWorkout() {
@@ -628,18 +618,6 @@ exerciseList.addEventListener('change', e => {
   }
 });
 
-saveWorkoutBtn.addEventListener('click', async () => {
-  const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
-  await saveHistoryEntry(workout.exercises, dur, workout.comment);
-  const exHist = loadExerciseHistory();
-  workout.exercises.forEach(ex => {
-    exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
-  });
-  saveExerciseHistory(exHist);
-  renderExerciseOptions();
-  saveWorkout();
-  await renderHistory();
-});
 
 saveTemplateBtn.addEventListener('click', async () => {
   const name = prompt('Template name:');
@@ -703,13 +681,6 @@ historyList.addEventListener('click', async e => {
   }
 });
 
-workoutCommentBtn.addEventListener('click', () => {
-  workoutCommentBtn.classList.add('hidden');
-  workoutCommentEl.classList.remove('hidden');
-  workout.comment = '';
-  workoutCommentEl.value = '';
-  workoutCommentEl.focus();
-});
 
 if (workoutCommentEl) {
   workoutCommentEl.addEventListener('input', () => {
