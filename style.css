@@ -23,6 +23,13 @@ button {
     font-size: 1rem;
 }
 
+textarea {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    box-sizing: border-box;
+}
+
 #top-buttons {
     display: flex;
     justify-content: center;
@@ -121,6 +128,12 @@ ul {
     padding: 0.25rem;
     margin-top: 0.25rem;
     font-size: 0.9rem;
+}
+.comment-btn {
+    margin-bottom: 0.5rem;
+}
+.ex-comment {
+    margin-top: 0.25rem;
 }
 
 #data-buttons {

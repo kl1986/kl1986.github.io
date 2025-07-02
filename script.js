@@ -30,18 +30,36 @@ const resumeWorkoutBtn = document.getElementById('resume-workout');
 const endWorkoutBtn = document.getElementById('end-workout');
 const workoutTimeDisplay = document.getElementById('workout-time');
 const appVersionFooter = document.getElementById('app-version');
+const workoutCommentEl = document.getElementById('workout-comment');
+const workoutCommentBtn = document.getElementById('toggle-workout-comment');
 
 let restTimer = null;
-let workout = { exercises: [] };
+let workout = { exercises: [], comment: '' };
 let workoutTimer = null;
 let workoutStart = null;
 let pausedTime = 0;
 let pauseStart = null;
+let currentTemplate = null;
+
+function renderWorkoutComment() {
+  if (!workoutCommentEl || !workoutCommentBtn) return;
+  if (workout.comment) {
+    workoutCommentEl.value = workout.comment;
+    workoutCommentEl.classList.remove('hidden');
+    workoutCommentBtn.classList.add('hidden');
+  } else {
+    workoutCommentEl.value = '';
+    workoutCommentEl.classList.add('hidden');
+    workoutCommentBtn.classList.remove('hidden');
+  }
+}
 
 function loadWorkout() {
   const data = localStorage.getItem('currentWorkout');
   if (data) {
     workout = JSON.parse(data);
+    if (!workout.exercises) workout.exercises = [];
+    if (!('comment' in workout)) workout.comment = '';
   }
 }
 
@@ -51,13 +69,23 @@ function saveWorkout() {
 
 function loadHistory() {
   const data = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  data.forEach(h => {
+    if (!('duration' in h)) h.duration = 0;
+    if (!('comment' in h)) h.comment = '';
+  });
   updateExerciseHistoryFromWorkouts(data);
   return data;
 }
 
-function saveHistoryEntry(exercises) {
+function saveHistoryEntry(exercises, duration, comment) {
   const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
-  const w = { id: Date.now(), date: new Date().toISOString(), exercises };
+  const w = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    exercises,
+    duration,
+    comment
+  };
   history.push(w);
   localStorage.setItem('workoutHistory', JSON.stringify(history));
   updateExerciseHistoryFromWorkouts(history);
@@ -65,7 +93,9 @@ function saveHistoryEntry(exercises) {
 }
 
 function loadTemplates() {
-  return JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+  const t = JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+  t.forEach(tmp => { if (!('comment' in tmp)) tmp.comment = ''; });
+  return t;
 }
 
 function saveTemplates(tmpl) {
@@ -95,6 +125,8 @@ function importDataFromFile(file) {
       const data = JSON.parse(str);
       if (data.currentWorkout) {
         workout = data.currentWorkout;
+        if (!workout.exercises) workout.exercises = [];
+        if (!('comment' in workout)) workout.comment = '';
         saveWorkout();
       }
       if (data.workoutHistory) {
@@ -312,6 +344,36 @@ function endWorkoutTimer() {
   endWorkoutBtn.classList.add('hidden');
 }
 
+async function finishWorkout() {
+  const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
+  endWorkoutTimer();
+  await saveHistoryEntry(workout.exercises, dur, workout.comment);
+  const exHist = loadExerciseHistory();
+  workout.exercises.forEach(ex => {
+    exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
+  });
+  saveExerciseHistory(exHist);
+  renderExerciseOptions();
+  await renderHistory();
+
+  if (currentTemplate) {
+    const templates = await loadTemplates();
+    const tmpl = templates.find(t => t.name === currentTemplate);
+    if (tmpl) {
+      const changed = JSON.stringify(tmpl.exercises) !== JSON.stringify(workout.exercises) || (tmpl.comment || '') !== (workout.comment || '');
+      if (changed) {
+        if (confirm('Update the template with these changes?')) {
+          tmpl.exercises = JSON.parse(JSON.stringify(workout.exercises));
+          tmpl.comment = workout.comment;
+          await saveTemplates(templates);
+          await renderTemplateList();
+        }
+      }
+    }
+  }
+  currentTemplate = null;
+}
+
 function getLastExerciseSets(name) {
   const hist = loadExerciseHistory();
   return hist[name] || null;
@@ -329,6 +391,7 @@ function getExerciseAttempts(name) {
 
 function renderWorkout() {
   exerciseList.innerHTML = '';
+  renderWorkoutComment();
   workout.exercises.forEach((ex, i) => {
     const div = document.createElement('div');
     div.className = 'exercise';
@@ -380,6 +443,18 @@ function renderWorkout() {
     addSetBtn.textContent = 'Add Set';
     div.appendChild(addSetBtn);
 
+    if (ex.comment) {
+      const txt = document.createElement('textarea');
+      txt.className = 'ex-comment';
+      txt.value = ex.comment;
+      div.appendChild(txt);
+    } else {
+      const addComment = document.createElement('button');
+      addComment.className = 'add-ex-comment';
+      addComment.textContent = 'Add Comment';
+      div.appendChild(addComment);
+    }
+
     const last = getLastExerciseSets(ex.name);
     if (last) {
       const hist = document.createElement('div');
@@ -399,8 +474,14 @@ async function renderHistory() {
     const div = document.createElement('div');
     div.className = 'history-entry';
     const header = document.createElement('div');
-    header.textContent = formatDate(w.date);
+    const dur = w.duration ? ` - ${formatTime(w.duration)}` : '';
+    header.textContent = formatDate(w.date) + dur;
     div.appendChild(header);
+    if (w.comment) {
+      const p = document.createElement('div');
+      p.textContent = w.comment;
+      div.appendChild(p);
+    }
     const ul = document.createElement('ul');
     w.exercises.forEach(ex => {
       const li = document.createElement('li');
@@ -408,6 +489,11 @@ async function renderHistory() {
       ul.appendChild(li);
     });
     div.appendChild(ul);
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '🗑️';
+    delBtn.className = 'del-history';
+    delBtn.dataset.id = w.id;
+    div.appendChild(delBtn);
     historyList.appendChild(div);
   });
 }
@@ -463,6 +549,14 @@ exerciseList.addEventListener('click', e => {
     workout.exercises.splice(exIndex, 1);
     saveWorkout();
     renderWorkout();
+  } else if (e.target.classList.contains('add-ex-comment')) {
+    e.target.remove();
+    const txt = document.createElement('textarea');
+    txt.className = 'ex-comment';
+    workout.exercises[exIndex].comment = '';
+    txt.value = '';
+    exEl.appendChild(txt);
+    txt.focus();
   } else if (e.target.classList.contains('ex-name')) {
     const existing = exEl.querySelector('.prev-attempts');
     if (existing) {
@@ -503,9 +597,23 @@ exerciseList.addEventListener('input', e => {
     } else if (e.target.classList.contains('reps')) {
       set.reps = e.target.value;
     }
+  } else if (e.target.classList.contains('ex-comment')) {
+    workout.exercises[exIndex].comment = e.target.value;
   }
   saveWorkout();
 });
+
+exerciseList.addEventListener('blur', e => {
+  if (e.target.classList.contains('ex-comment')) {
+    const exEl = e.target.closest('.exercise');
+    const exIndex = parseInt(exEl.dataset.index, 10);
+    if (e.target.value.trim() === '') {
+      delete workout.exercises[exIndex].comment;
+      renderWorkout();
+    }
+    saveWorkout();
+  }
+}, true);
 
 exerciseList.addEventListener('change', e => {
   const exEl = e.target.closest('.exercise');
@@ -521,7 +629,8 @@ exerciseList.addEventListener('change', e => {
 });
 
 saveWorkoutBtn.addEventListener('click', async () => {
-  await saveHistoryEntry(workout.exercises);
+  const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
+  await saveHistoryEntry(workout.exercises, dur, workout.comment);
   const exHist = loadExerciseHistory();
   workout.exercises.forEach(ex => {
     exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
@@ -540,15 +649,17 @@ saveTemplateBtn.addEventListener('click', async () => {
   if (existing) {
     if (!confirm('Overwrite existing template?')) return;
     existing.exercises = JSON.parse(JSON.stringify(workout.exercises));
+    existing.comment = workout.comment;
   } else {
-    templates.push({ name, exercises: JSON.parse(JSON.stringify(workout.exercises)) });
+    templates.push({ name, exercises: JSON.parse(JSON.stringify(workout.exercises)), comment: workout.comment });
   }
   await saveTemplates(templates);
   await renderTemplateList();
 });
 
 startBlankBtn.addEventListener('click', async () => {
-  workout = { exercises: [] };
+  workout = { exercises: [], comment: '' };
+  currentTemplate = null;
   saveWorkout();
   startSection.classList.add('hidden');
   showWorkoutUI(true);
@@ -562,6 +673,7 @@ homeBtn.addEventListener('click', () => {
   startSection.classList.remove('hidden');
   clearInterval(restTimer);
   endWorkoutTimer();
+  currentTemplate = null;
 });
 
 exportBtn.addEventListener('click', exportAllData);
@@ -578,7 +690,40 @@ instructionsBack.addEventListener('click', () => {
 startWorkoutBtn.addEventListener('click', startWorkoutTimer);
 pauseWorkoutBtn.addEventListener('click', pauseWorkoutTimer);
 resumeWorkoutBtn.addEventListener('click', resumeWorkoutTimer);
-endWorkoutBtn.addEventListener('click', endWorkoutTimer);
+endWorkoutBtn.addEventListener('click', finishWorkout);
+
+historyList.addEventListener('click', async e => {
+  if (e.target.classList.contains('del-history')) {
+    const id = parseInt(e.target.dataset.id, 10);
+    let history = await loadHistory();
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem('workoutHistory', JSON.stringify(history));
+    updateExerciseHistoryFromWorkouts(history);
+    renderHistory();
+  }
+});
+
+workoutCommentBtn.addEventListener('click', () => {
+  workoutCommentBtn.classList.add('hidden');
+  workoutCommentEl.classList.remove('hidden');
+  workout.comment = '';
+  workoutCommentEl.value = '';
+  workoutCommentEl.focus();
+});
+
+if (workoutCommentEl) {
+  workoutCommentEl.addEventListener('input', () => {
+    workout.comment = workoutCommentEl.value;
+    saveWorkout();
+  });
+  workoutCommentEl.addEventListener('blur', () => {
+    if (workoutCommentEl.value.trim() === '') {
+      workout.comment = '';
+      renderWorkoutComment();
+      saveWorkout();
+    }
+  });
+}
 
 templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
@@ -592,8 +737,9 @@ templateList.addEventListener('click', async e => {
     const templates = await loadTemplates();
     const tmpl = templates[idx];
     if (tmpl) {
-      workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises }));
+      workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises, comment: tmpl.comment || '' }));
       workout.exercises.forEach(ex => ex.sets.forEach(s => { s.done = false; }));
+      currentTemplate = tmpl.name;
       saveWorkout();
       startSection.classList.add('hidden');
       showWorkoutUI(true);
