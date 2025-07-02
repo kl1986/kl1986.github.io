@@ -113,21 +113,41 @@ function importDataFromFile(file) {
   file.text().then(str => {
     try {
       const data = JSON.parse(str);
+
+      const mergeArraysByKey = (existing, incoming, key) => {
+        const map = {};
+        existing.forEach(item => { map[item[key]] = item; });
+        incoming.forEach(item => { map[item[key]] = item; });
+        return Object.values(map);
+      };
+
       if (data.currentWorkout) {
-        workout = data.currentWorkout;
+        const existing = JSON.parse(localStorage.getItem('currentWorkout') || '{}');
+        workout = Object.assign({}, existing, data.currentWorkout);
         if (!workout.exercises) workout.exercises = [];
         if (!('comment' in workout)) workout.comment = '';
         saveWorkout();
       }
+
       if (data.workoutHistory) {
-        localStorage.setItem('workoutHistory', JSON.stringify(data.workoutHistory));
+        const existingHist = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+        const mergedHist = mergeArraysByKey(existingHist, data.workoutHistory, 'id');
+        localStorage.setItem('workoutHistory', JSON.stringify(mergedHist));
+        updateExerciseHistoryFromWorkouts(mergedHist);
       }
+
       if (data.workoutTemplates) {
-        localStorage.setItem('workoutTemplates', JSON.stringify(data.workoutTemplates));
+        const existingTmpl = JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
+        const mergedTmpl = mergeArraysByKey(existingTmpl, data.workoutTemplates, 'name');
+        localStorage.setItem('workoutTemplates', JSON.stringify(mergedTmpl));
       }
+
       if (data.exerciseHistory) {
-        saveExerciseHistory(data.exerciseHistory);
+        const existingHist = JSON.parse(localStorage.getItem('exerciseHistory') || '{}');
+        const merged = Object.assign({}, existingHist, data.exerciseHistory);
+        saveExerciseHistory(merged);
       }
+
       renderExerciseOptions();
       renderTemplateList();
       renderHistory();
