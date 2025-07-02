@@ -512,7 +512,34 @@ function init() {
   showWorkoutUI(false);
   startSection.classList.remove('hidden');
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js');
+    navigator.serviceWorker.register('service-worker.js').then(reg => {
+      function checkUpdate() {
+        reg.update();
+      }
+
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+
+      reg.update();
+      setInterval(checkUpdate, 60 * 60 * 1000);
+    });
   }
   if ('Notification' in window) {
     Notification.requestPermission();
