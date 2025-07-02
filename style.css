@@ -60,6 +60,7 @@ button {
     display: flex;
     align-items: center;
     margin-bottom: 0.25rem;
+    flex-wrap: wrap;
 }
 
 .set-item input[type="number"] {
@@ -98,12 +99,24 @@ ul {
     background: #ddd;
     margin-top: 0.25rem;
     position: relative;
+    flex-basis: 100%;
 }
 
 .rest-progress-inner {
     height: 100%;
     width: 100%;
     background: #4caf50;
+}
+
+.rest-progress-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.6rem;
+    line-height: 0.5rem;
+    color: #000;
 }
 
 .prev-attempts {

@@ -126,9 +126,10 @@ async function renderTemplateList() {
     btn.dataset.index = i;
     btn.className = 'tmpl-start';
     const delBtn = document.createElement('button');
-    delBtn.textContent = 'Delete';
+    delBtn.textContent = '🗑️';
     delBtn.dataset.index = i;
     delBtn.className = 'del-template';
+    delBtn.title = 'Delete';
     wrapper.appendChild(btn);
     wrapper.appendChild(delBtn);
     templateList.appendChild(wrapper);
@@ -169,26 +170,62 @@ function startRestTimer(setEl) {
     currentProgress.parentElement.removeChild(currentProgress);
   }
 
+  let progressText = null;
   if (setEl) {
     const bar = document.createElement('div');
     bar.className = 'rest-progress';
-    bar.innerHTML = '<div class="rest-progress-inner"></div>';
+    bar.innerHTML = '<div class="rest-progress-inner"></div><span class="rest-progress-text"></span>';
     setEl.appendChild(bar);
     currentProgress = bar;
+    progressText = bar.querySelector('.rest-progress-text');
   }
 
   const initial = remaining;
+  if (progressText) progressText.textContent = `${remaining}s / ${initial}s`;
   restTimer = setInterval(() => {
     remaining--;
     timerDisplay.textContent = remaining;
     if (currentProgress) {
       const inner = currentProgress.firstElementChild;
       inner.style.width = (remaining / initial) * 100 + '%';
+      const text = currentProgress.querySelector('.rest-progress-text');
+      if (text) text.textContent = `${remaining}s / ${initial}s`;
     }
     if (remaining <= 0) {
       clearInterval(restTimer);
+      playBeep();
+      sendRestNotification();
     }
   }, 1000);
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1000;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    gain.gain.setValueAtTime(1, ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.2);
+  } catch (e) {
+    console.error('Beep failed', e);
+  }
+}
+
+function sendRestNotification() {
+  if (Notification.permission === 'granted') {
+    new Notification('Rest done, time to get working');
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        new Notification('Rest done, time to get working');
+      }
+    });
+  }
 }
 
 function getLastExerciseSets(name) {
@@ -250,7 +287,7 @@ function renderWorkout() {
         `<input type="number" class="reps" placeholder="reps" value="${set.reps || ''}">` +
         history +
         `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>` +
-        `<button class="del-set">Delete</button>`;
+        `<button class="del-set" title="Delete">🗑️</button>`;
       ul.appendChild(li);
     });
     div.appendChild(ul);
@@ -530,6 +567,9 @@ function init() {
   authSection.classList.remove('hidden');
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
+  }
+  if ('Notification' in window) {
+    Notification.requestPermission();
   }
   fetch('/api/user')
     .then(r => r.ok ? r.json() : null)
