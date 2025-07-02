@@ -8,5 +8,6 @@ This offline-capable web application helps you build and repeat workouts directl
 - Reorder exercises and edit set details as you train
 - Tick off sets to automatically start a rest countdown
 - Save the workout and view previous sessions in the history list
+- Select exercises you've done before when adding a new one, with the same number of sets as last time
 
 All data is stored locally in the browser and a service worker keeps the page available offline. Open `index.html` in your mobile browser (optimised for iPhone) and start tracking your workouts.
