@@ -1,6 +1,7 @@
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
+const exerciseOptions = document.getElementById('exercise-options');
 const saveWorkoutBtn = document.getElementById('save-workout');
 const saveTemplateBtn = document.getElementById('save-template');
 const historyList = document.getElementById('history-list');
@@ -61,6 +62,16 @@ function renderTemplateList() {
     btn.textContent = t.name;
     btn.dataset.index = i;
     templateList.appendChild(btn);
+  });
+}
+
+function renderExerciseOptions() {
+  const hist = loadExerciseHistory();
+  exerciseOptions.innerHTML = '';
+  Object.keys(hist).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    exerciseOptions.appendChild(opt);
   });
 }
 
@@ -173,7 +184,11 @@ addExerciseForm.addEventListener('submit', e => {
   e.preventDefault();
   const name = exerciseNameInput.value.trim();
   if (!name) return;
-  workout.exercises.push({ name, sets: [{ weight: '', reps: '', done: false }] });
+  const lastSets = getLastExerciseSets(name);
+  const sets = lastSets
+    ? lastSets.map(() => ({ weight: '', reps: '', done: false }))
+    : [{ weight: '', reps: '', done: false }];
+  workout.exercises.push({ name, sets });
   exerciseNameInput.value = '';
   saveWorkout();
   renderWorkout();
@@ -248,6 +263,7 @@ saveWorkoutBtn.addEventListener('click', () => {
     exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
   });
   saveExerciseHistory(exHist);
+  renderExerciseOptions();
   saveWorkout();
   renderHistory();
 });
@@ -302,6 +318,7 @@ templateList.addEventListener('click', e => {
 function init() {
   loadWorkout();
   renderTemplateList();
+  renderExerciseOptions();
   showWorkoutUI(false);
   startSection.classList.remove('hidden');
   renderWorkout();
