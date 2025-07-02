@@ -21,6 +21,7 @@ const loginUsername = document.getElementById('login-username');
 const loginPassword = document.getElementById('login-password');
 const registerButton = document.getElementById('register-button');
 const authSection = document.getElementById('auth-section');
+const logoutButton = document.getElementById('logout-button');
 
 let restTimer = null;
 let workout = { exercises: [] };
@@ -110,6 +111,11 @@ function updateExerciseHistoryFromWorkouts(workouts) {
   saveExerciseHistory(hist);
 }
 
+function formatDate(str) {
+  const d = new Date(str);
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 async function renderTemplateList() {
   const templates = await loadTemplates();
   templateList.innerHTML = '';
@@ -190,6 +196,16 @@ function getLastExerciseSets(name) {
   return hist[name] || null;
 }
 
+function getExerciseAttempts(name) {
+  const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  return history
+    .filter(w => w.exercises.some(ex => ex.name === name))
+    .map(w => ({
+      date: w.date,
+      sets: w.exercises.find(ex => ex.name === name).sets
+    }));
+}
+
 function renderWorkout() {
   exerciseList.innerHTML = '';
   workout.exercises.forEach((ex, i) => {
@@ -262,7 +278,7 @@ async function renderHistory() {
     const div = document.createElement('div');
     div.className = 'history-entry';
     const header = document.createElement('div');
-    header.textContent = w.date;
+    header.textContent = formatDate(w.date);
     div.appendChild(header);
     const ul = document.createElement('ul');
     w.exercises.forEach(ex => {
@@ -333,6 +349,27 @@ exerciseList.addEventListener('click', e => {
     workout.exercises.splice(exIndex, 1);
     saveWorkout();
     renderWorkout();
+  } else if (e.target.classList.contains('ex-name')) {
+    const existing = exEl.querySelector('.prev-attempts');
+    if (existing) {
+      existing.remove();
+    } else {
+      const name = workout.exercises[exIndex].name;
+      const attempts = getExerciseAttempts(name).slice().reverse();
+      const div = document.createElement('div');
+      div.className = 'prev-attempts';
+      if (attempts.length === 0) {
+        div.textContent = 'No previous attempts';
+      } else {
+        attempts.forEach(a => {
+          const p = document.createElement('div');
+          p.textContent = `${formatDate(a.date)}: ` +
+            a.sets.map(s => `${s.weight || 0}kg x ${s.reps}`).join(', ');
+          div.appendChild(p);
+        });
+      }
+      exEl.appendChild(div);
+    }
   }
 });
 
@@ -411,6 +448,15 @@ homeBtn.addEventListener('click', () => {
   clearInterval(restTimer);
 });
 
+logoutButton.addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  currentUser = null;
+  showWorkoutUI(false);
+  startSection.classList.add('hidden');
+  authSection.classList.remove('hidden');
+  logoutButton.classList.add('hidden');
+});
+
 templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
     const idx = parseInt(e.target.dataset.index, 10);
@@ -447,6 +493,7 @@ loginForm.addEventListener('submit', async e => {
     currentUser = await resp.json();
     authSection.classList.add('hidden');
     startSection.classList.remove('hidden');
+    logoutButton.classList.remove('hidden');
     await renderExerciseOptions();
     await renderHistory();
     renderWorkout();
@@ -468,6 +515,7 @@ registerButton.addEventListener('click', async () => {
     currentUser = await resp.json();
     authSection.classList.add('hidden');
     startSection.classList.remove('hidden');
+    logoutButton.classList.remove('hidden');
     await renderExerciseOptions();
     await renderHistory();
     renderWorkout();
@@ -490,6 +538,7 @@ function init() {
         currentUser = user;
         authSection.classList.add('hidden');
         startSection.classList.remove('hidden');
+        logoutButton.classList.remove('hidden');
         await renderExerciseOptions();
         await renderHistory();
         renderWorkout();

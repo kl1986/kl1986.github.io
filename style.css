@@ -105,3 +105,14 @@ ul {
     width: 100%;
     background: #4caf50;
 }
+
+.prev-attempts {
+    background: #eef;
+    padding: 0.25rem;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+}
+
+#logout-button {
+    margin-top: 1rem;
+}
