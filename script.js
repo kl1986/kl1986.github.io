@@ -152,7 +152,7 @@ function renderWorkout() {
     header.appendChild(upBtn);
     header.appendChild(downBtn);
     const delExBtn = document.createElement('button');
-    delExBtn.textContent = 'Delete';
+    delExBtn.textContent = '🗑️';
     delExBtn.className = 'del-ex';
     header.appendChild(delExBtn);
     div.appendChild(header);
