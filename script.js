@@ -16,9 +16,15 @@ const homeBtn = document.getElementById('home-button');
 const addExerciseSection = document.getElementById('add-exercise-section');
 const historySection = document.getElementById('history-section');
 const topButtons = document.getElementById('top-buttons');
+const loginForm = document.getElementById('login-form');
+const loginUsername = document.getElementById('login-username');
+const loginPassword = document.getElementById('login-password');
+const registerButton = document.getElementById('register-button');
+const authSection = document.getElementById('auth-section');
 
 let restTimer = null;
 let workout = { exercises: [] };
+let currentUser = null;
 
 function loadWorkout() {
   const data = localStorage.getItem('currentWorkout');
@@ -31,12 +37,28 @@ function saveWorkout() {
   localStorage.setItem('currentWorkout', JSON.stringify(workout));
 }
 
-function loadHistory() {
-  return JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+async function loadHistory() {
+  if (!currentUser) return [];
+  const resp = await fetch('/api/workouts');
+  const data = await resp.json();
+  localStorage.setItem('workoutHistory', JSON.stringify(data));
+  updateExerciseHistoryFromWorkouts(data);
+  return data;
 }
 
-function saveHistory(hist) {
-  localStorage.setItem('workoutHistory', JSON.stringify(hist));
+async function saveHistoryEntry(exercises) {
+  if (!currentUser) return;
+  const resp = await fetch('/api/workouts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ exercises })
+  });
+  const w = await resp.json();
+  const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  history.push(w);
+  localStorage.setItem('workoutHistory', JSON.stringify(history));
+  updateExerciseHistoryFromWorkouts(history);
+  return w;
 }
 
 function loadTemplates() {
@@ -53,6 +75,16 @@ function loadExerciseHistory() {
 
 function saveExerciseHistory(hist) {
   localStorage.setItem('exerciseHistory', JSON.stringify(hist));
+}
+
+function updateExerciseHistoryFromWorkouts(workouts) {
+  const hist = {};
+  workouts.forEach(w => {
+    w.exercises.forEach(ex => {
+      hist[ex.name] = ex.sets;
+    });
+  });
+  saveExerciseHistory(hist);
 }
 
 function renderTemplateList() {
@@ -74,10 +106,16 @@ function renderTemplateList() {
   });
 }
 
-function renderExerciseOptions() {
-  const hist = loadExerciseHistory();
+async function renderExerciseOptions() {
+  let list = [];
+  if (currentUser) {
+    const resp = await fetch('/api/exercises');
+    list = await resp.json();
+  } else {
+    list = Object.keys(loadExerciseHistory());
+  }
   exerciseOptions.innerHTML = '';
-  Object.keys(hist).forEach(name => {
+  list.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     exerciseOptions.appendChild(opt);
@@ -194,8 +232,8 @@ function renderWorkout() {
   });
 }
 
-function renderHistory() {
-  const history = loadHistory();
+async function renderHistory() {
+  const history = await loadHistory();
   historyList.innerHTML = '';
   history.slice().reverse().forEach(w => {
     const div = document.createElement('div');
@@ -214,10 +252,17 @@ function renderHistory() {
   });
 }
 
-addExerciseForm.addEventListener('submit', e => {
+addExerciseForm.addEventListener('submit', async e => {
   e.preventDefault();
   const name = exerciseNameInput.value.trim();
   if (!name) return;
+  if (currentUser) {
+    await fetch('/api/exercises', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+  }
   const lastSets = getLastExerciseSets(name);
   const sets = lastSets
     ? lastSets.map(() => ({ weight: '', reps: '', done: false }))
@@ -226,6 +271,7 @@ addExerciseForm.addEventListener('submit', e => {
   exerciseNameInput.value = '';
   saveWorkout();
   renderWorkout();
+  renderExerciseOptions();
 });
 
 exerciseList.addEventListener('click', e => {
@@ -300,10 +346,8 @@ exerciseList.addEventListener('change', e => {
   }
 });
 
-saveWorkoutBtn.addEventListener('click', () => {
-  const history = loadHistory();
-  history.push({ date: new Date().toLocaleString(), exercises: workout.exercises });
-  saveHistory(history);
+saveWorkoutBtn.addEventListener('click', async () => {
+  await saveHistoryEntry(workout.exercises);
   const exHist = loadExerciseHistory();
   workout.exercises.forEach(ex => {
     exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
@@ -311,7 +355,7 @@ saveWorkoutBtn.addEventListener('click', () => {
   saveExerciseHistory(exHist);
   renderExerciseOptions();
   saveWorkout();
-  renderHistory();
+  await renderHistory();
 });
 
 saveTemplateBtn.addEventListener('click', () => {
@@ -329,13 +373,13 @@ saveTemplateBtn.addEventListener('click', () => {
   renderTemplateList();
 });
 
-startBlankBtn.addEventListener('click', () => {
+startBlankBtn.addEventListener('click', async () => {
   workout = { exercises: [] };
   saveWorkout();
   startSection.classList.add('hidden');
   showWorkoutUI(true);
   renderWorkout();
-  renderHistory();
+  await renderHistory();
 });
 
 homeBtn.addEventListener('click', () => {
@@ -362,22 +406,73 @@ templateList.addEventListener('click', e => {
       startSection.classList.add('hidden');
       showWorkoutUI(true);
       renderWorkout();
-      renderHistory();
+      await renderHistory();
     }
   }
 });
 
+loginForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = loginUsername.value.trim();
+  const password = loginPassword.value.trim();
+  const resp = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  if (resp.ok) {
+    currentUser = await resp.json();
+    authSection.classList.add('hidden');
+    startSection.classList.remove('hidden');
+    await renderExerciseOptions();
+    await renderHistory();
+    renderWorkout();
+    renderTemplateList();
+  } else {
+    alert('Login failed');
+  }
+});
+
+registerButton.addEventListener('click', async () => {
+  const username = loginUsername.value.trim();
+  const password = loginPassword.value.trim();
+  const resp = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  if (resp.ok) {
+    currentUser = await resp.json();
+    authSection.classList.add('hidden');
+    startSection.classList.remove('hidden');
+    await renderExerciseOptions();
+    await renderHistory();
+    renderWorkout();
+    renderTemplateList();
+  } else {
+    alert('Register failed');
+  }
+});
+
 function init() {
-  loadWorkout();
-  renderTemplateList();
-  renderExerciseOptions();
   showWorkoutUI(false);
-  startSection.classList.remove('hidden');
-  renderWorkout();
-  renderHistory();
+  authSection.classList.remove('hidden');
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
   }
+  fetch('/api/user')
+    .then(r => r.ok ? r.json() : null)
+    .then(async user => {
+      if (user) {
+        currentUser = user;
+        authSection.classList.add('hidden');
+        startSection.classList.remove('hidden');
+        await renderExerciseOptions();
+        await renderHistory();
+        renderWorkout();
+        renderTemplateList();
+      }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);
