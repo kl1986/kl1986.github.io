@@ -23,6 +23,17 @@ button {
     font-size: 1rem;
 }
 
+#top-buttons {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+#top-buttons button {
+    margin: 0 0.5rem;
+    font-size: 1.5rem;
+}
+
 #timer-display {
     font-size: 2rem;
     margin-left: 1rem;
@@ -75,4 +86,18 @@ ul {
 
 .hidden {
     display: none;
+}
+
+.rest-progress {
+    width: 100%;
+    height: 0.5rem;
+    background: #ddd;
+    margin-top: 0.25rem;
+    position: relative;
+}
+
+.rest-progress-inner {
+    height: 100%;
+    width: 100%;
+    background: #4caf50;
 }

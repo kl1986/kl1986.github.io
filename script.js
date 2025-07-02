@@ -15,6 +15,7 @@ const workoutSection = document.getElementById('workout-section');
 const homeBtn = document.getElementById('home-button');
 const addExerciseSection = document.getElementById('add-exercise-section');
 const historySection = document.getElementById('history-section');
+const topButtons = document.getElementById('top-buttons');
 
 let restTimer = null;
 let workout = { exercises: [] };
@@ -84,19 +85,39 @@ function renderExerciseOptions() {
 }
 
 function showWorkoutUI(show) {
-  [restSection, workoutSection, addExerciseSection, historySection].forEach(sec => {
+  [restSection, workoutSection, addExerciseSection, historySection, topButtons].forEach(sec => {
     if (show) sec.classList.remove('hidden');
     else sec.classList.add('hidden');
   });
 }
 
-function startRestTimer() {
+let currentProgress = null;
+
+function startRestTimer(setEl) {
   let remaining = parseInt(restInput.value, 10);
   clearInterval(restTimer);
   timerDisplay.textContent = remaining;
+
+  if (currentProgress && currentProgress.parentElement) {
+    currentProgress.parentElement.removeChild(currentProgress);
+  }
+
+  if (setEl) {
+    const bar = document.createElement('div');
+    bar.className = 'rest-progress';
+    bar.innerHTML = '<div class="rest-progress-inner"></div>';
+    setEl.appendChild(bar);
+    currentProgress = bar;
+  }
+
+  const initial = remaining;
   restTimer = setInterval(() => {
     remaining--;
     timerDisplay.textContent = remaining;
+    if (currentProgress) {
+      const inner = currentProgress.firstElementChild;
+      inner.style.width = (remaining / initial) * 100 + '%';
+    }
     if (remaining <= 0) {
       clearInterval(restTimer);
     }
@@ -275,7 +296,7 @@ exerciseList.addEventListener('change', e => {
     const setIndex = parseInt(setEl.dataset.index, 10);
     workout.exercises[exIndex].sets[setIndex].done = e.target.checked;
     saveWorkout();
-    if (e.target.checked) startRestTimer();
+    if (e.target.checked) startRestTimer(setEl);
   }
 });
 
