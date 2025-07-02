@@ -388,7 +388,7 @@ homeBtn.addEventListener('click', () => {
   clearInterval(restTimer);
 });
 
-templateList.addEventListener('click', e => {
+templateList.addEventListener('click', async e => {
   if (e.target.classList.contains('del-template')) {
     const idx = parseInt(e.target.dataset.index, 10);
     const templates = loadTemplates();
