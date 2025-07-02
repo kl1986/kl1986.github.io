@@ -605,8 +605,18 @@ templateList.addEventListener('click', async e => {
 });
 
 function init() {
-  showWorkoutUI(false);
-  startSection.classList.remove('hidden');
+  loadWorkout();
+  renderExerciseOptions();
+  renderHistory();
+  renderWorkout();
+  renderTemplateList();
+  if (workout.exercises && workout.exercises.length > 0) {
+    startSection.classList.add('hidden');
+    showWorkoutUI(true);
+  } else {
+    showWorkoutUI(false);
+    startSection.classList.remove('hidden');
+  }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').then(reg => {
       function checkUpdate() {
@@ -640,11 +650,6 @@ function init() {
   if ('Notification' in window) {
     Notification.requestPermission();
   }
-  loadWorkout();
-  renderExerciseOptions();
-  renderHistory();
-  renderWorkout();
-  renderTemplateList();
   if (appVersionFooter) appVersionFooter.textContent = 'Version ' + APP_VERSION;
 }
 
