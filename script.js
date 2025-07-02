@@ -58,10 +58,18 @@ function renderTemplateList() {
   const templates = loadTemplates();
   templateList.innerHTML = '';
   templates.forEach((t, i) => {
+    const wrapper = document.createElement('div');
     const btn = document.createElement('button');
     btn.textContent = t.name;
     btn.dataset.index = i;
-    templateList.appendChild(btn);
+    btn.className = 'tmpl-start';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Delete';
+    delBtn.dataset.index = i;
+    delBtn.className = 'del-template';
+    wrapper.appendChild(btn);
+    wrapper.appendChild(delBtn);
+    templateList.appendChild(wrapper);
   });
 }
 
@@ -122,6 +130,10 @@ function renderWorkout() {
     downBtn.className = 'down';
     header.appendChild(upBtn);
     header.appendChild(downBtn);
+    const delExBtn = document.createElement('button');
+    delExBtn.textContent = 'Delete';
+    delExBtn.className = 'del-ex';
+    header.appendChild(delExBtn);
     div.appendChild(header);
 
     const ul = document.createElement('ul');
@@ -139,7 +151,8 @@ function renderWorkout() {
         `<input type="number" class="weight" placeholder="kg" value="${set.weight || ''}">` +
         `<input type="number" class="reps" placeholder="reps" value="${set.reps || ''}">` +
         history +
-        `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>`;
+        `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>` +
+        `<button class="del-set">Delete</button>`;
       ul.appendChild(li);
     });
     div.appendChild(ul);
@@ -216,6 +229,18 @@ exerciseList.addEventListener('click', e => {
     const tmp = workout.exercises[exIndex + 1];
     workout.exercises[exIndex + 1] = workout.exercises[exIndex];
     workout.exercises[exIndex] = tmp;
+    saveWorkout();
+    renderWorkout();
+  } else if (e.target.classList.contains('del-set')) {
+    const setEl = e.target.closest('.set-item');
+    if (setEl) {
+      const setIndex = parseInt(setEl.dataset.index, 10);
+      workout.exercises[exIndex].sets.splice(setIndex, 1);
+      saveWorkout();
+      renderWorkout();
+    }
+  } else if (e.target.classList.contains('del-ex')) {
+    workout.exercises.splice(exIndex, 1);
     saveWorkout();
     renderWorkout();
   }
@@ -299,7 +324,13 @@ homeBtn.addEventListener('click', () => {
 });
 
 templateList.addEventListener('click', e => {
-  if (e.target.tagName === 'BUTTON') {
+  if (e.target.classList.contains('del-template')) {
+    const idx = parseInt(e.target.dataset.index, 10);
+    const templates = loadTemplates();
+    templates.splice(idx, 1);
+    saveTemplates(templates);
+    renderTemplateList();
+  } else if (e.target.classList.contains('tmpl-start')) {
     const idx = parseInt(e.target.dataset.index, 10);
     const templates = loadTemplates();
     const tmpl = templates[idx];
