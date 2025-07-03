@@ -33,6 +33,10 @@
       <input type="file" id="import-data" accept="application/json" class="hidden">
       <button id="show-instructions">File Format</button>
     </div>
+    <div id="exercise-overview">
+      <h3>Exercises</h3>
+      <div id="exercise-list-home"></div>
+    </div>
   </section>
 
   <section id="rest-section" class="hidden">
@@ -61,6 +65,12 @@
   <section id="history-section" class="hidden">
     <h2>History</h2>
     <div id="history-list"></div>
+  </section>
+
+  <section id="exercise-chart-section" class="hidden">
+    <button id="exercise-chart-back">Back</button>
+    <h2 id="exercise-chart-title"></h2>
+    <canvas id="exercise-chart" width="400" height="300"></canvas>
   </section>
 
   <section id="instructions-section" class="hidden">
