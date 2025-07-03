@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -38,6 +38,7 @@ const exerciseChartSection = document.getElementById('exercise-chart-section');
 const exerciseChart = document.getElementById('exercise-chart');
 const exerciseChartTitle = document.getElementById('exercise-chart-title');
 const exerciseChartBack = document.getElementById('exercise-chart-back');
+const resumeHomeBtn = document.getElementById('resume-workout-home');
 
 let restTimer = null;
 let setTimer = null;
@@ -64,6 +65,15 @@ function renderWorkoutComment() {
   workoutCommentEl.value = workout.comment || '';
 }
 
+function updateResumeButton() {
+  if (!resumeHomeBtn) return;
+  if (workout.exercises && workout.exercises.length > 0) {
+    resumeHomeBtn.classList.remove('hidden');
+  } else {
+    resumeHomeBtn.classList.add('hidden');
+  }
+}
+
 function loadWorkout() {
   const data = localStorage.getItem('currentWorkout');
   if (data) {
@@ -71,10 +81,12 @@ function loadWorkout() {
     if (!workout.exercises) workout.exercises = [];
     if (!('comment' in workout)) workout.comment = '';
   }
+  updateResumeButton();
 }
 
 function saveWorkout() {
   localStorage.setItem('currentWorkout', JSON.stringify(workout));
+  updateResumeButton();
 }
 
 function loadHistory() {
@@ -112,6 +124,24 @@ function loadTemplates() {
 
 function saveTemplates(tmpl) {
   localStorage.setItem('workoutTemplates', JSON.stringify(tmpl));
+}
+
+async function confirmEndCurrentWorkout() {
+  if (workout.exercises && workout.exercises.length > 0) {
+    if (confirm('A workout is in progress. End it and start a new one?')) {
+      await finishWorkout();
+      workout = { exercises: [], comment: '' };
+      workoutStart = null;
+      pausedTime = 0;
+      pauseStart = null;
+      return true;
+    } else {
+      startSection.classList.add('hidden');
+      showWorkoutUI(true);
+      return false;
+    }
+  }
+  return true;
 }
 
 function exportAllData() {
@@ -215,6 +245,11 @@ function formatDate(str) {
   return `${weekday} ${period}, ${date}, ${time}`;
 }
 
+function formatShortDate(str) {
+  const d = new Date(str);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 async function renderTemplateList() {
   const templates = await loadTemplates();
   templateList.innerHTML = '';
@@ -284,12 +319,12 @@ function drawExerciseChart(data) {
   if (!exerciseChart) return;
   const ctx = exerciseChart.getContext('2d');
   ctx.clearRect(0, 0, exerciseChart.width, exerciseChart.height);
-  const padding = 30;
+  const padding = 40;
   const width = exerciseChart.width - padding * 2;
   const height = exerciseChart.height - padding * 2;
 
   const maxValue = Math.max(1, ...data.map(d => Math.max(d.weight, d.reps, d.time)));
-  const stepX = data.length > 1 ? width / (data.length - 1) : 0;
+  const stepX = data.length > 1 ? width / (data.length - 1) : width;
   const scaleY = val => height - (val / maxValue) * height + padding;
 
   ctx.strokeStyle = '#ccc';
@@ -298,6 +333,30 @@ function drawExerciseChart(data) {
   ctx.lineTo(padding, height + padding);
   ctx.lineTo(width + padding, height + padding);
   ctx.stroke();
+
+  const ticks = 5;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= ticks; i++) {
+    const val = (maxValue / ticks) * i;
+    const y = scaleY(val);
+    ctx.beginPath();
+    ctx.moveTo(padding - 5, y);
+    ctx.lineTo(padding, y);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(0), padding - 8, y);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  data.forEach((d, i) => {
+    const x = padding + i * stepX;
+    ctx.beginPath();
+    ctx.moveTo(x, height + padding);
+    ctx.lineTo(x, height + padding + 5);
+    ctx.stroke();
+    ctx.fillText(formatShortDate(d.date), x, height + padding + 6);
+  });
 
   function drawLine(values, color) {
     ctx.strokeStyle = color;
@@ -508,6 +567,7 @@ async function finishWorkout() {
   }
   currentTemplate = null;
   renderCurrentTemplate();
+  updateResumeButton();
 }
 
 function getLastExerciseSets(name) {
@@ -802,7 +862,10 @@ exerciseList.addEventListener('change', e => {
     const setIndex = parseInt(setEl.dataset.index, 10);
     workout.exercises[exIndex].sets[setIndex].done = e.target.checked;
     saveWorkout();
-    if (e.target.checked) startRestTimer(setEl);
+    if (e.target.checked) {
+      if (!workoutStart) startWorkoutTimer();
+      startRestTimer(setEl);
+    }
   }
 });
 
@@ -824,6 +887,7 @@ saveTemplateBtn.addEventListener('click', async () => {
 });
 
 startBlankBtn.addEventListener('click', async () => {
+  if (!(await confirmEndCurrentWorkout())) return;
   workout = { exercises: [], comment: '' };
   currentTemplate = null;
   renderCurrentTemplate();
@@ -839,10 +903,15 @@ homeBtn.addEventListener('click', () => {
   showWorkoutUI(false);
   startSection.classList.remove('hidden');
   clearInterval(restTimer);
-  endWorkoutTimer();
-  currentTemplate = null;
-  renderCurrentTemplate();
+  updateResumeButton();
 });
+
+if (resumeHomeBtn) {
+  resumeHomeBtn.addEventListener('click', () => {
+    startSection.classList.add('hidden');
+    showWorkoutUI(true);
+  });
+}
 
 exportBtn.addEventListener('click', exportAllData);
 importBtn.addEventListener('click', () => importInput.click());
@@ -912,6 +981,7 @@ templateList.addEventListener('click', async e => {
     await saveTemplates(templates);
     await renderTemplateList();
   } else if (e.target.classList.contains('tmpl-start')) {
+    if (!(await confirmEndCurrentWorkout())) return;
     const idx = parseInt(e.target.dataset.index, 10);
     const templates = await loadTemplates();
     const tmpl = templates[idx];
@@ -938,6 +1008,7 @@ function init() {
   renderWorkout();
   renderTemplateList();
   renderCurrentTemplate();
+  updateResumeButton();
   if (workout.exercises && workout.exercises.length > 0) {
     startSection.classList.add('hidden');
     showWorkoutUI(true);
