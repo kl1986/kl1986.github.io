@@ -182,3 +182,16 @@ footer {
     color: red;
 }
 
+#exercise-list-home button {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.25rem;
+}
+
+#exercise-chart {
+    width: 100%;
+    max-width: 600px;
+    height: 300px;
+    border: 1px solid #ccc;
+}
+

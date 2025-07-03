@@ -1,4 +1,4 @@
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -33,6 +33,11 @@ const workoutTimeDisplay = document.getElementById('workout-time');
 const appVersionFooter = document.getElementById('app-version');
 const workoutCommentEl = document.getElementById('workout-comment');
 const templateIndicator = document.getElementById('template-indicator');
+const exerciseListHome = document.getElementById('exercise-list-home');
+const exerciseChartSection = document.getElementById('exercise-chart-section');
+const exerciseChart = document.getElementById('exercise-chart');
+const exerciseChartTitle = document.getElementById('exercise-chart-title');
+const exerciseChartBack = document.getElementById('exercise-chart-back');
 
 let restTimer = null;
 let setTimer = null;
@@ -169,6 +174,7 @@ function importDataFromFile(file) {
       }
 
       renderExerciseOptions();
+      renderExerciseListHome();
       renderTemplateList();
       renderHistory();
       renderWorkout();
@@ -237,6 +243,86 @@ function renderExerciseOptions() {
     opt.value = name;
     exerciseOptions.appendChild(opt);
   });
+}
+
+function renderExerciseListHome() {
+  if (!exerciseListHome) return;
+  const names = Object.keys(loadExerciseHistory()).sort();
+  exerciseListHome.innerHTML = '';
+  names.forEach(name => {
+    const btn = document.createElement('button');
+    btn.textContent = name;
+    btn.dataset.name = name;
+    btn.className = 'exercise-home-entry';
+    exerciseListHome.appendChild(btn);
+  });
+}
+
+function getExerciseProgress(name) {
+  const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  return history
+    .filter(w => w.exercises.some(ex => ex.name === name))
+    .map(w => {
+      const ex = w.exercises.find(ex => ex.name === name);
+      let weight = 0, reps = 0, time = 0;
+      let cw = 0, cr = 0, ct = 0;
+      ex.sets.forEach(s => {
+        if (s.weight) { weight += Number(s.weight); cw++; }
+        if (s.reps) { reps += Number(s.reps); cr++; }
+        if (s.time) { time += Number(s.time); ct++; }
+      });
+      return {
+        date: w.date,
+        weight: cw ? weight / cw : 0,
+        reps: cr ? reps / cr : 0,
+        time: ct ? time / ct : 0
+      };
+    });
+}
+
+function drawExerciseChart(data) {
+  if (!exerciseChart) return;
+  const ctx = exerciseChart.getContext('2d');
+  ctx.clearRect(0, 0, exerciseChart.width, exerciseChart.height);
+  const padding = 30;
+  const width = exerciseChart.width - padding * 2;
+  const height = exerciseChart.height - padding * 2;
+
+  const maxValue = Math.max(1, ...data.map(d => Math.max(d.weight, d.reps, d.time)));
+  const stepX = data.length > 1 ? width / (data.length - 1) : 0;
+  const scaleY = val => height - (val / maxValue) * height + padding;
+
+  ctx.strokeStyle = '#ccc';
+  ctx.beginPath();
+  ctx.moveTo(padding, padding);
+  ctx.lineTo(padding, height + padding);
+  ctx.lineTo(width + padding, height + padding);
+  ctx.stroke();
+
+  function drawLine(values, color) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    values.forEach((v, i) => {
+      const x = padding + i * stepX;
+      const y = scaleY(v);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  drawLine(data.map(d => d.weight), 'red');
+  drawLine(data.map(d => d.reps), 'green');
+  drawLine(data.map(d => d.time), 'blue');
+}
+
+function showExerciseChart(name) {
+  if (!exerciseChartSection) return;
+  exerciseChartTitle.textContent = name;
+  startSection.classList.add('hidden');
+  exerciseChartSection.classList.remove('hidden');
+  const data = getExerciseProgress(name);
+  drawExerciseChart(data);
 }
 
 function showWorkoutUI(show) {
@@ -402,6 +488,7 @@ async function finishWorkout() {
   });
   saveExerciseHistory(exHist);
   renderExerciseOptions();
+  renderExerciseListHome();
   await renderHistory();
 
   if (currentTemplate) {
@@ -781,8 +868,26 @@ historyList.addEventListener('click', async e => {
     localStorage.setItem('workoutHistory', JSON.stringify(history));
     updateExerciseHistoryFromWorkouts(history);
     renderHistory();
+    renderExerciseOptions();
+    renderExerciseListHome();
   }
 });
+
+if (exerciseListHome) {
+  exerciseListHome.addEventListener('click', e => {
+    if (e.target.classList.contains('exercise-home-entry')) {
+      const name = e.target.dataset.name;
+      showExerciseChart(name);
+    }
+  });
+}
+
+if (exerciseChartBack) {
+  exerciseChartBack.addEventListener('click', () => {
+    exerciseChartSection.classList.add('hidden');
+    startSection.classList.remove('hidden');
+  });
+}
 
 
 if (workoutCommentEl) {
@@ -828,6 +933,7 @@ templateList.addEventListener('click', async e => {
 function init() {
   loadWorkout();
   renderExerciseOptions();
+  renderExerciseListHome();
   renderHistory();
   renderWorkout();
   renderTemplateList();
