@@ -7,6 +7,8 @@ const saveTemplateBtn = document.getElementById('save-template');
 const historyList = document.getElementById('history-list');
 const restInput = document.getElementById('rest-input');
 const timerDisplay = document.getElementById('timer-display');
+const setTimerSection = document.getElementById('set-timer-section');
+const setTimerDisplay = document.getElementById('set-timer-display');
 const startSection = document.getElementById('start-section');
 const templateList = document.getElementById('template-list');
 const startBlankBtn = document.getElementById('start-blank');
@@ -33,6 +35,7 @@ const workoutCommentEl = document.getElementById('workout-comment');
 const templateIndicator = document.getElementById('template-indicator');
 
 let restTimer = null;
+let setTimer = null;
 let workout = { exercises: [], comment: '' };
 let workoutTimer = null;
 let workoutStart = null;
@@ -74,19 +77,21 @@ function loadHistory() {
   data.forEach(h => {
     if (!('duration' in h)) h.duration = 0;
     if (!('comment' in h)) h.comment = '';
+    if (!('template' in h)) h.template = null;
   });
   updateExerciseHistoryFromWorkouts(data);
   return data;
 }
 
-function saveHistoryEntry(exercises, duration, comment) {
+function saveHistoryEntry(exercises, duration, comment, template) {
   const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
   const w = {
     id: Date.now(),
     date: new Date().toISOString(),
     exercises,
     duration,
-    comment
+    comment,
+    template: template || null
   };
   history.push(w);
   localStorage.setItem('workoutHistory', JSON.stringify(history));
@@ -115,7 +120,10 @@ function exportAllData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'workout-data.json';
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const filename = `workout-data-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -277,6 +285,23 @@ function startRestTimer(setEl) {
   }, 1000);
 }
 
+function startSetTimer(seconds) {
+  let remaining = parseInt(seconds, 10);
+  if (!remaining || remaining <= 0) return;
+  clearInterval(setTimer);
+  setTimerDisplay.textContent = remaining;
+  setTimerSection.classList.remove('hidden');
+  setTimer = setInterval(() => {
+    remaining--;
+    setTimerDisplay.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(setTimer);
+      playBeep();
+      setTimeout(() => setTimerSection.classList.add('hidden'), 500);
+    }
+  }, 1000);
+}
+
 function playBeep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -369,7 +394,7 @@ function endWorkoutTimer() {
 async function finishWorkout() {
   const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
   endWorkoutTimer();
-  await saveHistoryEntry(workout.exercises, dur, workout.comment);
+  await saveHistoryEntry(workout.exercises, dur, workout.comment, currentTemplate);
   const exHist = loadExerciseHistory();
   workout.exercises.forEach(ex => {
     exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
@@ -450,12 +475,14 @@ function renderWorkout() {
       let history = '';
       if (lastSets && lastSets[j]) {
         const ls = lastSets[j];
-        history = `<span class="history">${ls.weight || 0}kg x ${ls.reps || 0}</span>`;
+        history = `<span class="history">${ls.weight || 0}kg x ${ls.reps || 0}${ls.time ? ' ' + ls.time + 's' : ''}</span>`;
       }
       li.innerHTML =
         `<input type="number" class="weight" placeholder="kg" value="${set.weight || ''}">` +
         `<input type="number" class="reps" placeholder="reps" value="${set.reps || ''}">` +
+        `<input type="number" class="time" placeholder="sec" value="${set.time || ''}">` +
         history +
+        `<button class="start-timer${set.time ? '' : ' hidden'}" data-time="${set.time || ''}" title="Start timer">⏱️</button>` +
         `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>` +
         `<button class="del-set" title="Delete">🗑️</button>`;
       ul.appendChild(li);
@@ -482,7 +509,13 @@ function renderWorkout() {
     if (last) {
       const hist = document.createElement('div');
       hist.className = 'last-history';
-      hist.textContent = 'Last: ' + last.map(s => `${s.weight || 0}kg x ${s.reps}`).join(', ');
+      hist.textContent = 'Last: ' + last.map(s => {
+        const parts = [];
+        if (s.weight) parts.push(`${s.weight}kg`);
+        if (s.reps) parts.push(`${s.reps} reps`);
+        if (s.time) parts.push(`${s.time}s`);
+        return parts.join(' ');
+      }).join(', ');
       div.appendChild(hist);
     }
 
@@ -500,6 +533,11 @@ async function renderHistory() {
     const dur = w.duration ? ` - ${formatTime(w.duration)}` : '';
     header.textContent = formatDate(w.date) + dur;
     div.appendChild(header);
+    if (w.template) {
+      const t = document.createElement('div');
+      t.textContent = `Template: ${w.template}`;
+      div.appendChild(t);
+    }
     if (w.comment) {
       const p = document.createElement('div');
       p.textContent = w.comment;
@@ -508,7 +546,13 @@ async function renderHistory() {
     const ul = document.createElement('ul');
     w.exercises.forEach(ex => {
       const li = document.createElement('li');
-      li.textContent = `${ex.name}: ` + ex.sets.map(s => `${s.weight || 0}kg x ${s.reps}${s.done ? '✓' : '✗'}`).join(', ');
+      li.textContent = `${ex.name}: ` + ex.sets.map(s => {
+        const parts = [];
+        if (s.weight) parts.push(`${s.weight}kg`);
+        if (s.reps) parts.push(`${s.reps} reps`);
+        if (s.time) parts.push(`${s.time}s`);
+        return parts.join(' ') + (s.done ? '✓' : '✗');
+      }).join(', ');
       ul.appendChild(li);
     });
     div.appendChild(ul);
@@ -527,8 +571,8 @@ addExerciseForm.addEventListener('submit', e => {
   if (!name) return;
   const lastSets = getLastExerciseSets(name);
   const sets = lastSets
-    ? lastSets.map(() => ({ weight: '', reps: '', done: false }))
-    : [{ weight: '', reps: '', done: false }];
+    ? lastSets.map(() => ({ weight: '', reps: '', time: '', done: false }))
+    : [{ weight: '', reps: '', time: '', done: false }];
   workout.exercises.push({ name, sets });
   exerciseNameInput.value = '';
   saveWorkout();
@@ -545,7 +589,8 @@ exerciseList.addEventListener('click', e => {
     const last = sets[sets.length - 1];
     const weight = last && last.weight !== '' ? last.weight : '';
     const reps = last && last.reps !== '' ? last.reps : '';
-    sets.push({ weight, reps, done: false });
+    const time = last && last.time !== '' ? last.time : '';
+    sets.push({ weight, reps, time, done: false });
     saveWorkout();
     renderWorkout();
   } else if (e.target.classList.contains('up') && exIndex > 0) {
@@ -568,6 +613,9 @@ exerciseList.addEventListener('click', e => {
       saveWorkout();
       renderWorkout();
     }
+  } else if (e.target.classList.contains('start-timer')) {
+    const secs = parseInt(e.target.dataset.time, 10);
+    if (secs) startSetTimer(secs);
   } else if (e.target.classList.contains('del-ex')) {
     workout.exercises.splice(exIndex, 1);
     saveWorkout();
@@ -595,7 +643,13 @@ exerciseList.addEventListener('click', e => {
         attempts.forEach(a => {
           const p = document.createElement('div');
           p.textContent = `${formatDate(a.date)}: ` +
-            a.sets.map(s => `${s.weight || 0}kg x ${s.reps}`).join(', ');
+            a.sets.map(s => {
+              const parts = [];
+              if (s.weight) parts.push(`${s.weight}kg`);
+              if (s.reps) parts.push(`${s.reps} reps`);
+              if (s.time) parts.push(`${s.time}s`);
+              return parts.join(' ');
+            }).join(', ');
           div.appendChild(p);
         });
       }
@@ -619,6 +673,14 @@ exerciseList.addEventListener('input', e => {
       set.weight = e.target.value;
     } else if (e.target.classList.contains('reps')) {
       set.reps = e.target.value;
+    } else if (e.target.classList.contains('time')) {
+      set.time = e.target.value;
+      const btn = setEl.querySelector('.start-timer');
+      if (btn) {
+        btn.dataset.time = set.time;
+        if (set.time && set.time !== '') btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+      }
     }
   } else if (e.target.classList.contains('ex-comment')) {
     workout.exercises[exIndex].comment = e.target.value;
