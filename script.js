@@ -1,4 +1,4 @@
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -38,7 +38,11 @@ const exerciseChartSection = document.getElementById('exercise-chart-section');
 const exerciseChart = document.getElementById('exercise-chart');
 const exerciseChartTitle = document.getElementById('exercise-chart-title');
 const exerciseChartBack = document.getElementById('exercise-chart-back');
+const exerciseChartLegend = document.getElementById('exercise-chart-legend');
+const exerciseSortSelect = document.getElementById('exercise-sort');
 const resumeHomeBtn = document.getElementById('resume-workout-home');
+
+let exerciseSortOrder = 'alpha';
 
 let restTimer = null;
 let setTimer = null;
@@ -282,7 +286,12 @@ function renderExerciseOptions() {
 
 function renderExerciseListHome() {
   if (!exerciseListHome) return;
-  const names = Object.keys(loadExerciseHistory()).sort();
+  const names = Object.keys(loadExerciseHistory());
+  if (exerciseSortOrder === 'recent') {
+    names.sort((a, b) => getExerciseLastDate(b) - getExerciseLastDate(a));
+  } else {
+    names.sort();
+  }
   exerciseListHome.innerHTML = '';
   names.forEach(name => {
     const btn = document.createElement('button');
@@ -308,11 +317,20 @@ function getExerciseProgress(name) {
       });
       return {
         date: w.date,
+        sets: ex.sets.length,
         weight: cw ? weight / cw : 0,
         reps: cr ? reps / cr : 0,
         time: ct ? time / ct : 0
       };
     });
+}
+
+function getExerciseLastDate(name) {
+  const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+  const filtered = history
+    .filter(w => w.exercises.some(ex => ex.name === name))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  return filtered.length ? new Date(filtered[0].date) : new Date(0);
 }
 
 function drawExerciseChart(data) {
@@ -323,14 +341,19 @@ function drawExerciseChart(data) {
   const width = exerciseChart.width - padding * 2;
   const height = exerciseChart.height - padding * 2;
 
-  const maxValue = Math.max(1, ...data.map(d => Math.max(d.weight, d.reps, d.time)));
+  const maxLeft = Math.max(1, ...data.map(d => d.sets));
+  const maxRight = Math.max(1, ...data.map(d => d.reps));
   const stepX = data.length > 1 ? width / (data.length - 1) : width;
-  const scaleY = val => height - (val / maxValue) * height + padding;
+  const scaleLeft = val => height - (val / maxLeft) * height + padding;
+  const scaleRight = val => height - (val / maxRight) * height + padding;
 
   ctx.strokeStyle = '#ccc';
   ctx.beginPath();
   ctx.moveTo(padding, padding);
   ctx.lineTo(padding, height + padding);
+  ctx.moveTo(width + padding, padding);
+  ctx.lineTo(width + padding, height + padding);
+  ctx.moveTo(padding, height + padding);
   ctx.lineTo(width + padding, height + padding);
   ctx.stroke();
 
@@ -338,13 +361,24 @@ function drawExerciseChart(data) {
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (let i = 0; i <= ticks; i++) {
-    const val = (maxValue / ticks) * i;
-    const y = scaleY(val);
+    const val = (maxLeft / ticks) * i;
+    const y = scaleLeft(val);
     ctx.beginPath();
     ctx.moveTo(padding - 5, y);
     ctx.lineTo(padding, y);
     ctx.stroke();
     ctx.fillText(val.toFixed(0), padding - 8, y);
+  }
+
+  ctx.textAlign = 'left';
+  for (let i = 0; i <= ticks; i++) {
+    const val = (maxRight / ticks) * i;
+    const y = scaleRight(val);
+    ctx.beginPath();
+    ctx.moveTo(width + padding, y);
+    ctx.lineTo(width + padding + 5, y);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(0), width + padding + 8, y);
   }
 
   ctx.textAlign = 'center';
@@ -358,21 +392,26 @@ function drawExerciseChart(data) {
     ctx.fillText(formatShortDate(d.date), x, height + padding + 6);
   });
 
-  function drawLine(values, color) {
+  function drawLine(values, color, scale) {
     ctx.strokeStyle = color;
     ctx.beginPath();
     values.forEach((v, i) => {
       const x = padding + i * stepX;
-      const y = scaleY(v);
+      const y = scale(v);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
   }
 
-  drawLine(data.map(d => d.weight), 'red');
-  drawLine(data.map(d => d.reps), 'green');
-  drawLine(data.map(d => d.time), 'blue');
+  drawLine(data.map(d => d.sets), 'red', scaleLeft);
+  drawLine(data.map(d => d.reps), 'blue', scaleRight);
+
+  if (exerciseChartLegend) {
+    exerciseChartLegend.innerHTML =
+      '<span class="legend-item"><span class="legend-color" style="background:red"></span>Sets</span>' +
+      '<span class="legend-item"><span class="legend-color" style="background:blue"></span>Reps</span>';
+  }
 }
 
 function showExerciseChart(name) {
@@ -955,6 +994,14 @@ if (exerciseChartBack) {
   exerciseChartBack.addEventListener('click', () => {
     exerciseChartSection.classList.add('hidden');
     startSection.classList.remove('hidden');
+    if (exerciseChartLegend) exerciseChartLegend.innerHTML = '';
+  });
+}
+
+if (exerciseSortSelect) {
+  exerciseSortSelect.addEventListener('change', () => {
+    exerciseSortOrder = exerciseSortSelect.value;
+    renderExerciseListHome();
   });
 }
 

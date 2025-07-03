@@ -195,3 +195,27 @@ footer {
     border: 1px solid #ccc;
 }
 
+#exercise-chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.legend-color {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.25rem;
+}
+
+#exercise-overview label {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+

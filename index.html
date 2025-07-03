@@ -36,6 +36,12 @@
     </div>
     <div id="exercise-overview">
       <h3>Exercises</h3>
+      <label>Sort by:
+        <select id="exercise-sort">
+          <option value="recent">Most Recent</option>
+          <option value="alpha" selected>Alphabetical</option>
+        </select>
+      </label>
       <div id="exercise-list-home"></div>
     </div>
   </section>
@@ -72,6 +78,7 @@
     <button id="exercise-chart-back">Back</button>
     <h2 id="exercise-chart-title"></h2>
     <canvas id="exercise-chart" width="400" height="300"></canvas>
+    <div id="exercise-chart-legend"></div>
   </section>
 
   <section id="instructions-section" class="hidden">
