@@ -52,6 +52,12 @@ textarea {
     margin-left: 1rem;
 }
 
+#set-timer-section {
+    text-align: center;
+    font-size: 2rem;
+    margin-top: 0.5rem;
+}
+
 .exercise {
     background: #fff;
     padding: 0.5rem;
@@ -78,6 +84,10 @@ textarea {
 
 .set-item input[type="number"] {
     width: 4rem;
+    margin-right: 0.25rem;
+}
+
+.start-timer {
     margin-right: 0.25rem;
 }
 
