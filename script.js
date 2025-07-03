@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -198,14 +198,15 @@ function updateExerciseHistoryFromWorkouts(workouts) {
 
 function formatDate(str) {
   const d = new Date(str);
-  const day = d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
+  const date = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const hour = d.getHours();
-  let period = 'evening';
-  if (hour >= 5 && hour < 12) period = 'morning';
-  else if (hour >= 12 && hour < 14) period = 'lunchtime';
-  else if (hour >= 14 && hour < 18) period = 'afternoon';
-  return `${day} ${time} (${period})`;
+  let period = 'Evening';
+  if (hour >= 5 && hour < 12) period = 'Morning';
+  else if (hour >= 12 && hour < 14) period = 'Lunchtime';
+  else if (hour >= 14 && hour < 18) period = 'Afternoon';
+  return `${weekday} ${period}, ${date}, ${time}`;
 }
 
 async function renderTemplateList() {
@@ -530,9 +531,13 @@ async function renderHistory() {
     const div = document.createElement('div');
     div.className = 'history-entry';
     const header = document.createElement('div');
-    const dur = w.duration ? ` - ${formatTime(w.duration)}` : '';
-    header.textContent = formatDate(w.date) + dur;
+    header.textContent = formatDate(w.date);
     div.appendChild(header);
+    if (w.duration) {
+      const durDiv = document.createElement('div');
+      durDiv.textContent = 'Duration: ' + formatTime(w.duration);
+      div.appendChild(durDiv);
+    }
     if (w.template) {
       const t = document.createElement('div');
       t.textContent = `Template: ${w.template}`;
@@ -546,12 +551,13 @@ async function renderHistory() {
     const ul = document.createElement('ul');
     w.exercises.forEach(ex => {
       const li = document.createElement('li');
-      li.textContent = `${ex.name}: ` + ex.sets.map(s => {
+      li.innerHTML = `${ex.name}: ` + ex.sets.map(s => {
         const parts = [];
         if (s.weight) parts.push(`${s.weight}kg`);
         if (s.reps) parts.push(`${s.reps} reps`);
         if (s.time) parts.push(`${s.time}s`);
-        return parts.join(' ') + (s.done ? '✓' : '✗');
+        const mark = s.done ? '<span class="tick">✓</span>' : '<span class="cross">✗</span>';
+        return parts.join(' ') + ' ' + mark;
       }).join(', ');
       ul.appendChild(li);
     });
