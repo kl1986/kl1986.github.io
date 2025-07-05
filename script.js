@@ -579,9 +579,12 @@ function endWorkoutTimer() {
 async function finishWorkout() {
   const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
   endWorkoutTimer();
-  await saveHistoryEntry(workout.exercises, dur, workout.comment, currentTemplate);
+  const completedExercises = workout.exercises.filter(ex =>
+    ex.sets.some(s => s.done)
+  );
+  await saveHistoryEntry(completedExercises, dur, workout.comment, currentTemplate);
   const exHist = loadExerciseHistory();
-  workout.exercises.forEach(ex => {
+  completedExercises.forEach(ex => {
     exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
   });
   saveExerciseHistory(exHist);
