@@ -1,4 +1,4 @@
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
