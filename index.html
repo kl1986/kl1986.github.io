@@ -81,6 +81,15 @@
     <div id="exercise-chart-legend"></div>
   </section>
 
+  <section id="profile-section" class="hidden">
+    <h2>Profile</h2>
+    <label>Name: <input type="text" id="profile-name"></label>
+    <label>Notes:
+      <textarea id="profile-notes" rows="4"></textarea>
+    </label>
+    <button id="save-profile">Save</button>
+  </section>
+
   <section id="instructions-section" class="hidden">
     <h2>Import/Export File Format</h2>
     <p>The exported file is JSON structured as:</p>
@@ -95,6 +104,13 @@
   </section>
 
   <script src="script.js"></script>
+  <nav id="bottom-nav">
+    <button id="nav-home">Home</button>
+    <button id="nav-exercises">Exercises</button>
+    <button id="nav-workout">Workout</button>
+    <button id="nav-history">History</button>
+    <button id="nav-profile">Profile</button>
+  </nav>
   <footer id="app-version"></footer>
 </body>
 </html>
