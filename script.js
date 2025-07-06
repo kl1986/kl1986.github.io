@@ -1,4 +1,4 @@
-const APP_VERSION = '1.9';
+const APP_VERSION = '1.10';
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -46,6 +46,7 @@ let exerciseSortOrder = 'alpha';
 
 let restTimer = null;
 let setTimer = null;
+let currentSetProgress = null;
 let workout = { exercises: [], comment: '' };
 let workoutTimer = null;
 let workoutStart = null;
@@ -84,6 +85,12 @@ function loadWorkout() {
     workout = JSON.parse(data);
     if (!workout.exercises) workout.exercises = [];
     if (!('comment' in workout)) workout.comment = '';
+    workout.exercises.forEach(ex => ex.sets.forEach(s => {
+      if (!('status' in s)) {
+        s.status = s.done ? 2 : 0;
+      }
+      delete s.done;
+    }));
   }
   updateResumeButton();
 }
@@ -122,7 +129,17 @@ function saveHistoryEntry(exercises, duration, comment, template) {
 
 function loadTemplates() {
   const t = JSON.parse(localStorage.getItem('workoutTemplates') || '[]');
-  t.forEach(tmp => { if (!('comment' in tmp)) tmp.comment = ''; });
+  t.forEach(tmp => {
+    if (!('comment' in tmp)) tmp.comment = '';
+    if (tmp.exercises) {
+      tmp.exercises.forEach(ex => ex.sets.forEach(s => {
+        if (!('status' in s)) {
+          s.status = s.done ? 2 : 0;
+        }
+        delete s.done;
+      }));
+    }
+  });
   return t;
 }
 
@@ -470,19 +487,32 @@ function startRestTimer(setEl) {
   }, 1000);
 }
 
-function startSetTimer(seconds) {
-  let remaining = parseInt(seconds, 10);
-  if (!remaining || remaining <= 0) return;
+function startSetTimer(setEl, seconds) {
+  let total = parseInt(seconds, 10);
+  if (!total || total <= 0) return;
   clearInterval(setTimer);
-  setTimerDisplay.textContent = remaining;
-  setTimerSection.classList.remove('hidden');
+  if (currentSetProgress && currentSetProgress.parentElement) {
+    currentSetProgress.parentElement.removeChild(currentSetProgress);
+  }
+  const bar = document.createElement('div');
+  bar.className = 'rest-progress';
+  bar.innerHTML = '<div class="rest-progress-inner"></div><span class="rest-progress-text"></span>';
+  setEl.appendChild(bar);
+  currentSetProgress = bar;
+  const textEl = bar.querySelector('.rest-progress-text');
+  let elapsed = 0;
+  if (textEl) textEl.textContent = `0s / ${total}s`;
   setTimer = setInterval(() => {
-    remaining--;
-    setTimerDisplay.textContent = remaining;
-    if (remaining <= 0) {
+    elapsed++;
+    if (currentSetProgress) {
+      const inner = currentSetProgress.firstElementChild;
+      inner.style.width = (elapsed / total) * 100 + '%';
+      if (textEl) textEl.textContent = `${elapsed}s / ${total}s`;
+    }
+    if (elapsed >= total) {
       clearInterval(setTimer);
       playBeep();
-      setTimeout(() => setTimerSection.classList.add('hidden'), 500);
+      sendTimerNotification();
     }
   }, 1000);
 }
@@ -511,6 +541,18 @@ function sendRestNotification() {
     Notification.requestPermission().then(p => {
       if (p === 'granted') {
         new Notification('Rest done, time to get working');
+      }
+    });
+  }
+}
+
+function sendTimerNotification() {
+  if (Notification.permission === 'granted') {
+    new Notification('Timer done');
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        new Notification('Timer done');
       }
     });
   }
@@ -579,13 +621,20 @@ function endWorkoutTimer() {
 async function finishWorkout() {
   const dur = workoutStart ? Date.now() - workoutStart - pausedTime : 0;
   endWorkoutTimer();
-  const completedExercises = workout.exercises.filter(ex =>
-    ex.sets.some(s => s.done)
-  );
+  const completedExercises = workout.exercises.map(ex => ({
+    name: ex.name,
+    sets: ex.sets.map(s => ({
+      weight: s.weight,
+      reps: s.reps,
+      time: s.time,
+      status: s.status || 0
+    }))
+  })).filter(ex => ex.sets.some(s => s.status > 0));
   await saveHistoryEntry(completedExercises, dur, workout.comment, currentTemplate);
   const exHist = loadExerciseHistory();
   completedExercises.forEach(ex => {
-    exHist[ex.name] = JSON.parse(JSON.stringify(ex.sets));
+    const completedSets = ex.sets.filter(s => s.status === 2);
+    exHist[ex.name] = JSON.parse(JSON.stringify(completedSets));
   });
   saveExerciseHistory(exHist);
   renderExerciseOptions();
@@ -665,7 +714,13 @@ function renderWorkout() {
       let history = '';
       if (lastSets && lastSets[j]) {
         const ls = lastSets[j];
-        history = `<span class="history">${ls.weight || 0}kg x ${ls.reps || 0}${ls.time ? ' ' + ls.time + 's' : ''}</span>`;
+        const parts = [];
+        if (ls.weight) parts.push(`${ls.weight}kg`);
+        if (ls.reps) parts.push(`${ls.reps} reps`);
+        if (ls.time) parts.push(`${ls.time}s`);
+        if (parts.length) {
+          history = `<span class="history">${parts.join(' ')}</span>`;
+        }
       }
       li.innerHTML =
         `<input type="number" class="weight" placeholder="kg" value="${set.weight || ''}">` +
@@ -673,7 +728,7 @@ function renderWorkout() {
         `<input type="number" class="time" placeholder="sec" value="${set.time || ''}">` +
         history +
         `<button class="start-timer${set.time ? '' : ' hidden'}" data-time="${set.time || ''}" title="Start timer">⏱️</button>` +
-        `<input type="checkbox" class="done" ${set.done ? 'checked' : ''}>` +
+        `<input type="range" class="status" min="0" max="2" step="1" value="${'status' in set ? set.status : (set.done ? 2 : 0)}">` +
         `<button class="del-set" title="Delete">🗑️</button>`;
       ul.appendChild(li);
     });
@@ -745,8 +800,11 @@ async function renderHistory() {
         if (s.weight) parts.push(`${s.weight}kg`);
         if (s.reps) parts.push(`${s.reps} reps`);
         if (s.time) parts.push(`${s.time}s`);
-        const mark = s.done ? '<span class="tick">✓</span>' : '<span class="cross">✗</span>';
-        return parts.join(' ') + ' ' + mark;
+        const status = 'status' in s ? s.status : (s.done ? 2 : 0);
+        let mark = '';
+        if (status === 2) mark = '<span class="tick">✓</span>';
+        else if (status === 1) mark = '<span class="cross">✗</span>';
+        return parts.join(' ') + (mark ? ' ' + mark : '');
       }).join(', ');
       ul.appendChild(li);
     });
@@ -766,8 +824,8 @@ addExerciseForm.addEventListener('submit', e => {
   if (!name) return;
   const lastSets = getLastExerciseSets(name);
   const sets = lastSets
-    ? lastSets.map(() => ({ weight: '', reps: '', time: '', done: false }))
-    : [{ weight: '', reps: '', time: '', done: false }];
+    ? lastSets.map(() => ({ weight: '', reps: '', time: '', status: 0 }))
+    : [{ weight: '', reps: '', time: '', status: 0 }];
   workout.exercises.push({ name, sets });
   exerciseNameInput.value = '';
   saveWorkout();
@@ -785,7 +843,7 @@ exerciseList.addEventListener('click', e => {
     const weight = last && last.weight !== '' ? last.weight : '';
     const reps = last && last.reps !== '' ? last.reps : '';
     const time = last && last.time !== '' ? last.time : '';
-    sets.push({ weight, reps, time, done: false });
+    sets.push({ weight, reps, time, status: 0 });
     saveWorkout();
     renderWorkout();
   } else if (e.target.classList.contains('up') && exIndex > 0) {
@@ -810,7 +868,8 @@ exerciseList.addEventListener('click', e => {
     }
   } else if (e.target.classList.contains('start-timer')) {
     const secs = parseInt(e.target.dataset.time, 10);
-    if (secs) startSetTimer(secs);
+    const setEl = e.target.closest('.set-item');
+    if (secs && setEl) startSetTimer(setEl, secs);
   } else if (e.target.classList.contains('del-ex')) {
     workout.exercises.splice(exIndex, 1);
     saveWorkout();
@@ -900,11 +959,12 @@ exerciseList.addEventListener('change', e => {
   if (!exEl) return;
   const exIndex = parseInt(exEl.dataset.index, 10);
   const setEl = e.target.closest('.set-item');
-  if (setEl && e.target.classList.contains('done')) {
+  if (setEl && e.target.classList.contains('status')) {
     const setIndex = parseInt(setEl.dataset.index, 10);
-    workout.exercises[exIndex].sets[setIndex].done = e.target.checked;
+    const val = parseInt(e.target.value, 10);
+    workout.exercises[exIndex].sets[setIndex].status = val;
     saveWorkout();
-    if (e.target.checked) {
+    if (val === 2) {
       if (!workoutStart) startWorkoutTimer();
       startRestTimer(setEl);
     }
@@ -1037,7 +1097,10 @@ templateList.addEventListener('click', async e => {
     const tmpl = templates[idx];
     if (tmpl) {
       workout = JSON.parse(JSON.stringify({ exercises: tmpl.exercises, comment: tmpl.comment || '' }));
-      workout.exercises.forEach(ex => ex.sets.forEach(s => { s.done = false; }));
+      workout.exercises.forEach(ex => ex.sets.forEach(s => {
+        s.status = 0;
+        delete s.done;
+      }));
       currentTemplate = tmpl.name;
       renderCurrentTemplate();
       saveWorkout();
