@@ -152,6 +152,11 @@ ul {
     margin-top: 0.25rem;
 }
 
+.status {
+    width: 5rem;
+    margin-right: 0.25rem;
+}
+
 #data-buttons {
     margin-top: 1rem;
     display: flex;
