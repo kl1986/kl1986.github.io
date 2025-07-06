@@ -242,10 +242,14 @@ footer {
     box-sizing: border-box;
 }
 
-#bottom-nav button {
+#bottom-nav button,
+#bottom-nav a {
     flex: 1;
     background: none;
     border: none;
     font-size: 1rem;
+    text-decoration: none;
+    text-align: center;
+    padding: 0.5rem 0;
 }
 

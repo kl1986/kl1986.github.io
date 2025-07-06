@@ -167,7 +167,6 @@ async function confirmEndCurrentWorkout() {
       pauseStart = null;
       return true;
     } else {
-      startSection.classList.add('hidden');
       showWorkoutPage();
       return false;
     }
@@ -471,36 +470,23 @@ function hideMainSections() {
 }
 
 function showHome() {
-  hideMainSections();
-  if (startSection) startSection.classList.remove('hidden');
-  updateResumeButton();
+  window.location.href = 'index.html';
 }
 
 function showExercisesPage() {
-  hideMainSections();
-  if (addExerciseSection) addExerciseSection.classList.remove('hidden');
+  window.location.href = 'exercises.html';
 }
 
 function showWorkoutPage() {
-  hideMainSections();
-  if (workoutSection) workoutSection.classList.remove('hidden');
-  if (addExerciseSection) addExerciseSection.classList.remove('hidden');
-  if (restSection) restSection.classList.remove('hidden');
-  if (topButtons) topButtons.classList.remove('hidden');
-  if (workout.exercises && workout.exercises.length > 0) {
-    if (workoutTimerSection) workoutTimerSection.classList.remove('hidden');
-  }
+  window.location.href = 'workout.html';
 }
 
 function showHistoryPage() {
-  hideMainSections();
-  if (historySection) historySection.classList.remove('hidden');
+  window.location.href = 'history.html';
 }
 
 function showProfilePage() {
-  hideMainSections();
-  if (profileSection) profileSection.classList.remove('hidden');
-  loadProfile();
+  window.location.href = 'profile.html';
 }
 
 function loadProfile() {
@@ -1069,7 +1055,6 @@ startBlankBtn.addEventListener('click', async () => {
   currentTemplate = null;
   renderCurrentTemplate();
   saveWorkout();
-  startSection.classList.add('hidden');
   showWorkoutPage();
   endWorkoutTimer();
   renderWorkout();
@@ -1084,7 +1069,6 @@ homeBtn.addEventListener('click', () => {
 
 if (resumeHomeBtn) {
   resumeHomeBtn.addEventListener('click', () => {
-    startSection.classList.add('hidden');
     showWorkoutPage();
   });
 }
@@ -1105,11 +1089,6 @@ pauseWorkoutBtn.addEventListener('click', pauseWorkoutTimer);
 resumeWorkoutBtn.addEventListener('click', resumeWorkoutTimer);
 endWorkoutBtn.addEventListener('click', finishWorkout);
 
-if (navHome) navHome.addEventListener('click', showHome);
-if (navExercises) navExercises.addEventListener('click', showExercisesPage);
-if (navWorkout) navWorkout.addEventListener('click', showWorkoutPage);
-if (navHistory) navHistory.addEventListener('click', showHistoryPage);
-if (navProfile) navProfile.addEventListener('click', showProfilePage);
 
 if (saveProfileBtn) {
   saveProfileBtn.addEventListener('click', () => {
@@ -1191,7 +1170,6 @@ templateList.addEventListener('click', async e => {
       currentTemplate = tmpl.name;
       renderCurrentTemplate();
       saveWorkout();
-      startSection.classList.add('hidden');
       showWorkoutPage();
       endWorkoutTimer();
       renderWorkout();
@@ -1211,7 +1189,6 @@ function init() {
   renderCurrentTemplate();
   updateResumeButton();
   if (workout.exercises && workout.exercises.length > 0) {
-    startSection.classList.add('hidden');
     showWorkoutPage();
   } else {
     showHome();
