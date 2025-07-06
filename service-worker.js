@@ -2,6 +2,10 @@ const CACHE_NAME = 'workout-app-cache-v4';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
+  '/exercises.html',
+  '/workout.html',
+  '/history.html',
+  '/profile.html',
   '/style.css',
   '/script.js',
   '/manifest.json'

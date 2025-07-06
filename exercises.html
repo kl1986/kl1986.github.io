@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Kelvo's Workout Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <h1>Kelvo's Workout Tracker</h1>
+  <section id="add-exercise-section">
+    <form id="add-exercise-form">
+      <input type="text" id="exercise-name" list="exercise-options" placeholder="New exercise" required>
+      <datalist id="exercise-options"></datalist>
+      <button type="submit">Add Exercise</button>
+    </form>
+  </section>
+
+  <script src="script.js"></script>
+  <nav id="bottom-nav">
+    <a id="nav-home" href="index.html">Home</a>
+    <a id="nav-exercises" href="exercises.html">Exercises</a>
+    <a id="nav-workout" href="workout.html">Workout</a>
+    <a id="nav-history" href="history.html">History</a>
+    <a id="nav-profile" href="profile.html">Profile</a>
+  </nav>
+  <footer id="app-version"></footer>
+</body>
+</html>
