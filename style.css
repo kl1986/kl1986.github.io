@@ -156,6 +156,10 @@ ul {
     width: 5rem;
     margin-right: 0.25rem;
 }
+.status-text {
+    margin-right: 0.25rem;
+    font-size: 0.8rem;
+}
 
 #data-buttons {
     margin-top: 1rem;

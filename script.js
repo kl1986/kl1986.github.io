@@ -1,4 +1,5 @@
 const APP_VERSION = '1.10';
+const STATUS_LABELS = ['Not done', 'Failed', 'Completed'];
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
 const exerciseNameInput = document.getElementById('exercise-name');
@@ -269,6 +270,10 @@ function formatDate(str) {
 function formatShortDate(str) {
   const d = new Date(str);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getStatusText(val) {
+  return STATUS_LABELS[parseInt(val, 10)] || '';
 }
 
 async function renderTemplateList() {
@@ -722,13 +727,15 @@ function renderWorkout() {
           history = `<span class="history">${parts.join(' ')}</span>`;
         }
       }
+      const statusVal = 'status' in set ? set.status : (set.done ? 2 : 0);
       li.innerHTML =
         `<input type="number" class="weight" placeholder="kg" value="${set.weight || ''}">` +
         `<input type="number" class="reps" placeholder="reps" value="${set.reps || ''}">` +
         `<input type="number" class="time" placeholder="sec" value="${set.time || ''}">` +
         history +
         `<button class="start-timer${set.time ? '' : ' hidden'}" data-time="${set.time || ''}" title="Start timer">⏱️</button>` +
-        `<input type="range" class="status" min="0" max="2" step="1" value="${'status' in set ? set.status : (set.done ? 2 : 0)}">` +
+        `<input type="range" class="status" min="0" max="2" step="1" value="${statusVal}">` +
+        `<span class="status-text">${getStatusText(statusVal)}</span>` +
         `<button class="del-set" title="Delete">🗑️</button>`;
       ul.appendChild(li);
     });
@@ -935,6 +942,10 @@ exerciseList.addEventListener('input', e => {
         if (set.time && set.time !== '') btn.classList.remove('hidden');
         else btn.classList.add('hidden');
       }
+    } else if (e.target.classList.contains('status')) {
+      set.status = parseInt(e.target.value, 10);
+      const textEl = setEl.querySelector('.status-text');
+      if (textEl) textEl.textContent = getStatusText(set.status);
     }
   } else if (e.target.classList.contains('ex-comment')) {
     workout.exercises[exIndex].comment = e.target.value;
@@ -963,8 +974,10 @@ exerciseList.addEventListener('change', e => {
     const setIndex = parseInt(setEl.dataset.index, 10);
     const val = parseInt(e.target.value, 10);
     workout.exercises[exIndex].sets[setIndex].status = val;
+    const textEl = setEl.querySelector('.status-text');
+    if (textEl) textEl.textContent = getStatusText(val);
     saveWorkout();
-    if (val === 2) {
+    if (val >= 1) {
       if (!workoutStart) startWorkoutTimer();
       startRestTimer(setEl);
     }
