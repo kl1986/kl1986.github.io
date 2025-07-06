@@ -1,4 +1,4 @@
-const APP_VERSION = '1.10';
+const APP_VERSION = '1.11';
 const STATUS_LABELS = ['Not done', 'Failed', 'Completed'];
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
