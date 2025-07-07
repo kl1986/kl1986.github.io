@@ -9,6 +9,19 @@
 </head>
 <body>
   <h1>Kelvo's Workout Tracker</h1>
+  <div id="top-buttons" class="hidden">
+    <button id="home-button" title="Home">🏠</button>
+    <button id="save-template" title="Save Template">⭐</button>
+  </div>
+  <div id="template-indicator" class="hidden"></div>
+
+  <section id="workout-timer-section" class="hidden">
+    <button id="start-workout">Start Workout</button>
+    <button id="pause-workout" class="hidden">Pause</button>
+    <button id="resume-workout" class="hidden">Resume</button>
+    <button id="end-workout" class="hidden">End Workout</button>
+    <span id="workout-time">00:00:00</span>
+  </section>
 
   <section id="start-section">
     <h2>Select Workout</h2>
@@ -32,12 +45,42 @@
       <div id="exercise-list-home"></div>
     </div>
   </section>
+
+  <section id="rest-section" class="hidden">
+    <label>Rest seconds: <input type="number" id="rest-input" value="60"></label>
+    <span id="timer-display">60</span>
+  </section>
+
+  <section id="set-timer-section" class="hidden">
+    <span id="set-timer-display">0</span>
+  </section>
+
+  <section id="workout-section" class="hidden">
+    <h2>Exercises</h2>
+    <textarea id="workout-comment" placeholder="Workout comment"></textarea>
+    <div id="exercise-list"></div>
+  </section>
+
+  <section id="add-exercise-section" class="hidden">
+    <form id="add-exercise-form">
+      <input type="text" id="exercise-name" list="exercise-options" placeholder="New exercise" required>
+      <datalist id="exercise-options"></datalist>
+      <button type="submit">Add Exercise</button>
+    </form>
+  </section>
+
+  <section id="history-section" class="hidden">
+    <h2>History</h2>
+    <div id="history-list"></div>
+  </section>
+
   <section id="exercise-chart-section" class="hidden">
     <button id="exercise-chart-back">Back</button>
     <h2 id="exercise-chart-title"></h2>
     <canvas id="exercise-chart" width="400" height="300"></canvas>
     <div id="exercise-chart-legend"></div>
   </section>
+
   <section id="instructions-section" class="hidden">
     <h2>Import/Export File Format</h2>
     <p>The exported file is JSON structured as:</p>
@@ -52,13 +95,6 @@
   </section>
 
   <script src="script.js"></script>
-  <nav id="bottom-nav">
-    <a id="nav-home" href="index.html">Home</a>
-    <a id="nav-exercises" href="exercises.html">Exercises</a>
-    <a id="nav-workout" href="workout.html">Workout</a>
-    <a id="nav-history" href="history.html">History</a>
-    <a id="nav-profile" href="profile.html">Profile</a>
-  </nav>
   <footer id="app-version"></footer>
 </body>
 </html>
