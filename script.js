@@ -1,4 +1,4 @@
-const APP_VERSION = '1.13';
+const APP_VERSION = '1.14';
 const STATUS_LABELS = ['Not done', 'Failed', 'Completed'];
 const exerciseList = document.getElementById('exercise-list');
 const addExerciseForm = document.getElementById('add-exercise-form');
@@ -46,6 +46,8 @@ const resumeHomeBtn = document.getElementById('resume-workout-home');
 let exerciseSortOrder = 'alpha';
 
 let restTimer = null;
+let restEndTime = null;
+let restTotal = null;
 let setTimer = null;
 let currentSetProgress = null;
 let workout = { exercises: [], comment: '' };
@@ -53,6 +55,7 @@ let workoutTimer = null;
 let workoutStart = null;
 let pausedTime = 0;
 let pauseStart = null;
+const WORKOUT_TIMER_KEY = 'workoutTimerState';
 let currentTemplate = null;
 
 function renderCurrentTemplate() {
@@ -454,9 +457,14 @@ function showWorkoutUI(show) {
 
 let currentProgress = null;
 
-function startRestTimer(setEl) {
-  let remaining = parseInt(restInput.value, 10);
+function startRestTimer(setEl, seconds, totalSeconds) {
+  let remaining = parseInt(seconds != null ? seconds : restInput.value, 10);
+  if (!remaining || remaining <= 0) return;
   clearInterval(restTimer);
+  restEndTime = Date.now() + remaining * 1000;
+  restTotal = totalSeconds != null ? totalSeconds : remaining;
+  localStorage.setItem('restEndTime', restEndTime);
+  localStorage.setItem('restTotal', restTotal);
   timerDisplay.textContent = remaining;
 
   if (currentProgress && currentProgress.parentElement) {
@@ -473,19 +481,23 @@ function startRestTimer(setEl) {
     progressText = bar.querySelector('.rest-progress-text');
   }
 
-  const initial = remaining;
+  const initial = restTotal;
   if (progressText) progressText.textContent = `${remaining}s / ${initial}s`;
   restTimer = setInterval(() => {
-    remaining--;
-    timerDisplay.textContent = remaining;
+    remaining = Math.ceil((restEndTime - Date.now()) / 1000);
+    timerDisplay.textContent = Math.max(0, remaining);
     if (currentProgress) {
       const inner = currentProgress.firstElementChild;
-      inner.style.width = (remaining / initial) * 100 + '%';
+      inner.style.width = (Math.max(0, remaining) / initial) * 100 + '%';
       const text = currentProgress.querySelector('.rest-progress-text');
-      if (text) text.textContent = `${remaining}s / ${initial}s`;
+      if (text) text.textContent = `${Math.max(0, remaining)}s / ${initial}s`;
     }
     if (remaining <= 0) {
       clearInterval(restTimer);
+      restEndTime = null;
+      restTotal = null;
+      localStorage.removeItem('restEndTime');
+      localStorage.removeItem('restTotal');
       playBeep();
       sendRestNotification();
     }
@@ -575,6 +587,7 @@ function startWorkoutTimer() {
   workoutStart = Date.now();
   pausedTime = 0;
   pauseStart = null;
+  localStorage.setItem(WORKOUT_TIMER_KEY, JSON.stringify({ workoutStart, pausedTime, pauseStart }));
   workoutTimeDisplay.textContent = '00:00:00';
   workoutTimerSection.classList.remove('hidden');
   startWorkoutBtn.classList.add('hidden');
@@ -594,6 +607,7 @@ function pauseWorkoutTimer() {
     pauseStart = Date.now();
     pauseWorkoutBtn.classList.add('hidden');
     resumeWorkoutBtn.classList.remove('hidden');
+    localStorage.setItem(WORKOUT_TIMER_KEY, JSON.stringify({ workoutStart, pausedTime, pauseStart }));
   }
 }
 
@@ -603,6 +617,7 @@ function resumeWorkoutTimer() {
     pauseStart = null;
     resumeWorkoutBtn.classList.add('hidden');
     pauseWorkoutBtn.classList.remove('hidden');
+    localStorage.setItem(WORKOUT_TIMER_KEY, JSON.stringify({ workoutStart, pausedTime, pauseStart }));
     workoutTimer = setInterval(() => {
       const now = Date.now();
       const elapsed = now - workoutStart - pausedTime;
@@ -616,6 +631,7 @@ function endWorkoutTimer() {
     clearInterval(workoutTimer);
     workoutTimer = null;
   }
+  localStorage.removeItem(WORKOUT_TIMER_KEY);
   workoutTimerSection.classList.add('hidden');
   startWorkoutBtn.classList.remove('hidden');
   pauseWorkoutBtn.classList.add('hidden');
@@ -1018,6 +1034,10 @@ homeBtn.addEventListener('click', () => {
   showWorkoutUI(false);
   startSection.classList.remove('hidden');
   clearInterval(restTimer);
+  restEndTime = null;
+  restTotal = null;
+  localStorage.removeItem('restEndTime');
+  localStorage.removeItem('restTotal');
   updateResumeButton();
 });
 
@@ -1135,6 +1155,39 @@ function init() {
   renderTemplateList();
   renderCurrentTemplate();
   updateResumeButton();
+  const savedRestEnd = parseInt(localStorage.getItem('restEndTime'), 10);
+  if (savedRestEnd && savedRestEnd > Date.now()) {
+    const savedTotal = parseInt(localStorage.getItem('restTotal'), 10) || Math.ceil((savedRestEnd - Date.now()) / 1000);
+    const remaining = Math.ceil((savedRestEnd - Date.now()) / 1000);
+    startRestTimer(null, remaining, savedTotal);
+  } else {
+    localStorage.removeItem('restEndTime');
+    localStorage.removeItem('restTotal');
+  }
+  const wt = JSON.parse(localStorage.getItem(WORKOUT_TIMER_KEY) || 'null');
+  if (wt && wt.workoutStart) {
+    workoutStart = wt.workoutStart;
+    pausedTime = wt.pausedTime || 0;
+    pauseStart = wt.pauseStart || null;
+    workoutTimerSection.classList.remove('hidden');
+    startWorkoutBtn.classList.add('hidden');
+    endWorkoutBtn.classList.remove('hidden');
+    if (pauseStart) {
+      pauseWorkoutBtn.classList.add('hidden');
+      resumeWorkoutBtn.classList.remove('hidden');
+      const elapsed = pauseStart - workoutStart - pausedTime;
+      workoutTimeDisplay.textContent = formatTime(elapsed);
+    } else {
+      pauseWorkoutBtn.classList.remove('hidden');
+      resumeWorkoutBtn.classList.add('hidden');
+      workoutTimeDisplay.textContent = formatTime(Date.now() - workoutStart - pausedTime);
+      workoutTimer = setInterval(() => {
+        const now = Date.now();
+        const elapsed = now - workoutStart - pausedTime;
+        workoutTimeDisplay.textContent = formatTime(elapsed);
+      }, 1000);
+    }
+  }
   if (workout.exercises && workout.exercises.length > 0) {
     startSection.classList.add('hidden');
     showWorkoutUI(true);
