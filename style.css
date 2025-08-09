@@ -1,13 +1,36 @@
+:root {
+    --accent-color: #6200ea;
+    --accent-color-hover: #7b1ffa;
+    --bg-gradient-start: #e0c3fc;
+    --bg-gradient-end: #8ec5fc;
+    --card-bg: #ffffff;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
         Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     margin: 0;
     padding: 1rem;
-    background-color: #f4f4f4;
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+    color: #333;
+}
+
+section {
+    max-width: 600px;
+    margin: 1rem auto;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
     text-align: center;
+    color: var(--accent-color);
+}
+
+h2, h3 {
+    color: var(--accent-color);
 }
 
 form input {
@@ -21,6 +44,20 @@ form input {
 button {
     padding: 0.5rem 1rem;
     font-size: 1rem;
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.1s;
+}
+
+button:hover {
+    background: var(--accent-color-hover);
+}
+
+button:active {
+    transform: scale(0.98);
 }
 
 textarea {
@@ -39,6 +76,10 @@ textarea {
 #top-buttons button {
     margin: 0 0.5rem;
     font-size: 1.5rem;
+    background: #fff;
+    color: var(--accent-color);
+    border: 2px solid var(--accent-color);
+    border-radius: 50%;
 }
 
 #template-indicator {
@@ -59,9 +100,11 @@ textarea {
 }
 
 .exercise {
-    background: #fff;
+    background: var(--card-bg);
     padding: 0.5rem;
     margin-bottom: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .exercise-header {
@@ -98,9 +141,11 @@ textarea {
 }
 
 .history-entry {
-    background: #fff;
+    background: var(--card-bg);
     padding: 0.5rem;
     margin-bottom: 0.5rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 .del-history {
     margin-top: 0.5rem;
@@ -147,6 +192,7 @@ ul {
     padding: 0.25rem;
     margin-top: 0.25rem;
     font-size: 0.9rem;
+    border-radius: 4px;
 }
 .ex-comment {
     margin-top: 0.25rem;
@@ -202,6 +248,9 @@ footer {
     max-width: 600px;
     height: 300px;
     border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 #exercise-chart-legend {
