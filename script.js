@@ -8,6 +8,8 @@ const saveTemplateBtn = document.getElementById('save-template');
 const historyList = document.getElementById('history-list');
 const restInput = document.getElementById('rest-input');
 const timerDisplay = document.getElementById('timer-display');
+const restAddBtn = document.getElementById('rest-add');
+const restSubtractBtn = document.getElementById('rest-subtract');
 const setTimerSection = document.getElementById('set-timer-section');
 const setTimerDisplay = document.getElementById('set-timer-display');
 const startSection = document.getElementById('start-section');
@@ -481,16 +483,15 @@ function startRestTimer(setEl, seconds, totalSeconds) {
     progressText = bar.querySelector('.rest-progress-text');
   }
 
-  const initial = restTotal;
-  if (progressText) progressText.textContent = `${remaining}s / ${initial}s`;
+  if (progressText) progressText.textContent = `${remaining}s / ${restTotal}s`;
   restTimer = setInterval(() => {
     remaining = Math.ceil((restEndTime - Date.now()) / 1000);
     timerDisplay.textContent = Math.max(0, remaining);
     if (currentProgress) {
       const inner = currentProgress.firstElementChild;
-      inner.style.width = (Math.max(0, remaining) / initial) * 100 + '%';
+      inner.style.width = restTotal > 0 ? (Math.max(0, remaining) / restTotal) * 100 + '%' : '0%';
       const text = currentProgress.querySelector('.rest-progress-text');
-      if (text) text.textContent = `${Math.max(0, remaining)}s / ${initial}s`;
+      if (text) text.textContent = `${Math.max(0, remaining)}s / ${restTotal}s`;
     }
     if (remaining <= 0) {
       clearInterval(restTimer);
@@ -503,6 +504,40 @@ function startRestTimer(setEl, seconds, totalSeconds) {
     }
   }, 1000);
 }
+
+function adjustRestTime(delta) {
+  if (restEndTime) {
+    restEndTime += delta * 1000;
+    restTotal = Math.max(0, restTotal + delta);
+    localStorage.setItem('restEndTime', restEndTime);
+    localStorage.setItem('restTotal', restTotal);
+    let remaining = Math.ceil((restEndTime - Date.now()) / 1000);
+    timerDisplay.textContent = Math.max(0, remaining);
+    if (currentProgress) {
+      const inner = currentProgress.firstElementChild;
+      inner.style.width = restTotal > 0 ? (Math.max(0, remaining) / restTotal) * 100 + '%' : '0%';
+      const text = currentProgress.querySelector('.rest-progress-text');
+      if (text) text.textContent = `${Math.max(0, remaining)}s / ${restTotal}s`;
+    }
+    if (remaining <= 0) {
+      clearInterval(restTimer);
+      restEndTime = null;
+      restTotal = null;
+      localStorage.removeItem('restEndTime');
+      localStorage.removeItem('restTotal');
+      playBeep();
+      sendRestNotification();
+    }
+  } else {
+    let val = parseInt(restInput.value, 10) || 0;
+    val = Math.max(0, val + delta);
+    restInput.value = val;
+    timerDisplay.textContent = val;
+  }
+}
+
+if (restAddBtn) restAddBtn.addEventListener('click', () => adjustRestTime(5));
+if (restSubtractBtn) restSubtractBtn.addEventListener('click', () => adjustRestTime(-5));
 
 function startSetTimer(setEl, seconds) {
   let total = parseInt(seconds, 10);
